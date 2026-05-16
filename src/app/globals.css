@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 10, 10, 10;
+    --background-end-rgb: 0, 0, 0;
+}
+
+body {
+    color: rgb(var(--foreground-rgb));
+    background: linear-gradient(to bottom,
+            transparent,
+            rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+}
+
+@layer utilities {
+    .text-balance {
+        text-wrap: balance;
+    }
+}
+
+/* --- PrintHype Splash Animations --- */
+@keyframes nozzle-move {
+    0% { transform: translate(-50%, 40px) rotate(-5deg); }
+    50% { transform: translate(-50%, 45px) rotate(5deg); }
+    100% { transform: translate(-50%, 40px) rotate(-5deg); }
+}
+
+.animate-nozzle-move {
+    animation: nozzle-move 1s ease-in-out infinite;
+}
+
+.animate-print-path {
+    animation: print 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes print {
+    to { stroke-dashoffset: 0; }
+}
+
+.animate-fade-up {
+    animation: fadeUp 1s ease-out 0.5s forwards;
+    opacity: 0;
+}
+
+@keyframes fadeUp {
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-loading-bar {
+    animation: loading 2.5s ease-in-out forwards;
+    width: 0%;
+}
+
+@keyframes loading {
+    to { width: 100%; }
+}
+
+/* Follow Path for splash filament tip */
+@keyframes follow {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; filter: blur(1px); }
+}
+
+.animate-follow-path {
+    animation: follow 1.5s ease-in-out infinite;
+}
+
+/* --- Custom Scrollbar --- */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 102, 0, 0.3);
+    border-radius: 999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 102, 0, 0.5);
+}
+
+/* --- Selection --- */
+::selection {
+    background: rgba(255, 102, 0, 0.3);
+    color: white;
+}
+
+/* --- Input Autofill --- */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+    -webkit-text-fill-color: white;
+    -webkit-box-shadow: 0 0 0px 1000px #1a1a1a inset;
+    caret-color: white;
+}
+
+/* --- Animations for dashboard cards --- */
+@keyframes slide-in-from-bottom-2 {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-in.slide-in-from-bottom-2 {
+    animation: slide-in-from-bottom-2 0.5s ease-out forwards;
+}
+
+/* --- Pulse glow for status indicators --- */
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 5px rgba(255, 102, 0, 0.2); }
+    50% { box-shadow: 0 0 20px rgba(255, 102, 0, 0.4); }
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
