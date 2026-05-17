@@ -48,7 +48,8 @@ export async function signup(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
-  redirect('/login?message=Revisá tu email para confirmar la cuenta')
+  revalidatePath('/', 'layout')
+  redirect('/dashboard')
 }
 
 export async function logout() {
