@@ -1,4 +1,4 @@
-const CACHE_NAME = 'printhype-v1';
+const CACHE_NAME = 'printhype-v2';
 const STATIC_ASSETS = [
   '/',
   '/dashboard',
