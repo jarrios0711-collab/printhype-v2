@@ -15,10 +15,11 @@ interface TooltipProps {
 
 export default function Tooltip({ content, children, position = 'top', delay = 400, className }: TooltipProps) {
   const [visible, setVisible] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timerRef = useRef(0)
 
   const show = () => {
-    timerRef.current = setTimeout(() => setVisible(true), delay)
+    clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(() => setVisible(true), delay)
   }
   const hide = () => {
     clearTimeout(timerRef.current)
