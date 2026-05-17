@@ -31,7 +31,7 @@ export default async function LoginPage(props: { searchParams?: Promise<{ error?
           </div>
         )}
 
-        <form className="space-y-4">
+        <form action={login} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Email</label>
             <input
@@ -39,7 +39,7 @@ export default async function LoginPage(props: { searchParams?: Promise<{ error?
               type="email"
               required
               className="w-full px-4 py-3 bg-neutral-800/50 border border-neutral-700 rounded-xl focus:ring-2 focus:ring-brand-orange outline-none transition-all text-white text-sm placeholder-neutral-600"
-              placeholder="admin@printhype.com"
+              placeholder="admin@jr3d.com"
             />
           </div>
           <div>
@@ -54,12 +54,13 @@ export default async function LoginPage(props: { searchParams?: Promise<{ error?
           </div>
           <div className="flex gap-3 pt-2">
             <button
-              formAction={login}
+              type="submit"
               className="flex-1 py-3 bg-brand-orange hover:bg-orange-600 font-black text-black text-xs uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] shadow-[0_0_20px_rgba(255,102,0,0.2)]"
             >
               Ingresar
             </button>
             <button
+              type="submit"
               formAction={signup}
               className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 font-black text-neutral-300 text-xs uppercase tracking-widest rounded-xl transition-all border border-neutral-700 hover:border-brand-orange/50"
             >

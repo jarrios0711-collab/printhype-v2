@@ -1,14 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { 
-    Zap, ShoppingCart, TrendingUp, Activity, AlertTriangle, 
+import {
+    Zap, ShoppingCart, TrendingUp, Activity, AlertTriangle,
     BrainCircuit, ChevronRight, Search, CheckCircle2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 export default function DashboardPage() {
+    const [userName, setUserName] = useState('admin')
     const [stats, setStats] = useState({ orders: 0, printers: 0, lowStock: 0 })
     const [recentActivity, setRecentActivity] = useState<any[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -16,6 +18,12 @@ export default function DashboardPage() {
     useEffect(() => {
         const load = async () => {
             try {
+                const supabase = createClient()
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user?.email) {
+                    setUserName(user.email.split('@')[0])
+                }
+
                 const [ordersRes, printersRes] = await Promise.allSettled([
                     fetch('/api/orders').then(r => r.json()),
                     fetch('/api/printers').then(r => r.json()),
@@ -54,7 +62,7 @@ export default function DashboardPage() {
                         Sistema Operativo JR3D v2.5
                     </div>
                     <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-white">
-                        Buenos días, <span className="text-brand-orange">admin</span>
+                        Buenos días, <span className="text-brand-orange">{userName}</span>
                     </h1>
                 </div>
                 <div className="relative">

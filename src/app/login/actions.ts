@@ -10,14 +10,18 @@ export async function login(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
+  console.log('[login] email:', email, 'password:', password ? '****' : 'vacio')
+
   if (!email || !password) {
     redirect('/login?error=Completá todos los campos')
   }
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
+  console.log('[login] supabase error:', error)
+
   if (error) {
-    redirect(`/login?error=${encodeURIComponent('Email o contraseña incorrectos')}`)
+    redirect(`/login?error=${encodeURIComponent(error.message || 'Email o contraseña incorrectos')}`)
   }
 
   revalidatePath('/', 'layout')

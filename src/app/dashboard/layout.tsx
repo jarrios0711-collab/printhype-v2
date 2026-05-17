@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { logout } from '../login/actions'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import ParticleBackground from '@/components/ui/ParticleBackground'
+import { createClient } from '@/lib/supabase/client'
 
 const navItems = [
     { name: 'Resumen', href: '/dashboard', icon: LayoutDashboard },
@@ -28,6 +30,18 @@ const navItems = [
 
 function Sidebar() {
     const pathname = usePathname()
+    const [userEmail, setUserEmail] = useState('admin@jr3d.com')
+    const [userInitial, setUserInitial] = useState('A')
+
+    useEffect(() => {
+        const supabase = createClient()
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user?.email) {
+                setUserEmail(user.email)
+                setUserInitial(user.email[0].toUpperCase())
+            }
+        })
+    }, [])
 
     return (
         <aside className="w-64 border-r border-neutral-900 flex flex-col bg-black/40 backdrop-blur-2xl sticky top-0 h-screen">
@@ -64,11 +78,11 @@ function Sidebar() {
             <div className="p-5 mt-auto border-t border-neutral-900">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="relative">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-orange to-brand-cyan flex items-center justify-center text-black font-bold text-sm">A</div>
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-orange to-brand-cyan flex items-center justify-center text-black font-bold text-sm">{userInitial}</div>
                         <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-[#050505] animate-pulse"></div>
                     </div>
                     <div className="flex-1 overflow-hidden">
-                        <p className="text-xs font-bold truncate">admin@jr3d.com</p>
+                        <p className="text-xs font-bold truncate">{userEmail}</p>
                         <span className="inline-block px-2 py-0.5 bg-brand-orange/10 text-brand-orange text-[9px] font-black rounded-full border border-brand-orange/20 uppercase tracking-widest">
                             JR3D PRO
                         </span>
