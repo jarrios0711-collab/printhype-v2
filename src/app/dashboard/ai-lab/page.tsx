@@ -1,18 +1,21 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { 
-    Cpu, 
-    Send, 
-    Sparkles, 
-    Terminal, 
+import Link from 'next/link'
+import {
+    Cpu,
+    Send,
+    Sparkles,
+    Terminal,
     Zap,
     RefreshCw,
     Play,
     Paperclip,
     FileCode,
     X,
-    Loader2
+    Loader2,
+    Settings,
+    AlertTriangle
 } from 'lucide-react'
 import { parseSTL, STLMetadata } from '@/lib/stl-utils'
 import { cn } from '@/lib/utils'
@@ -20,6 +23,14 @@ import { cn } from '@/lib/utils'
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+  openai: 'OpenAI',
+  groq: 'Groq',
+  gemini: 'Gemini',
+  ollama: 'Ollama (local)',
+  openrouter: 'OpenRouter',
 }
 
 export default function AILabPage() {
@@ -30,31 +41,44 @@ export default function AILabPage() {
     const [isAnalyzing, setIsAnalyzing] = useState(false)
     const [analyzedFile, setAnalyzedFile] = useState<STLMetadata | null>(null)
     const [error, setError] = useState<string | null>(null)
-    
+    const [aiProvider, setAiProvider] = useState<string | null>(null)
+    const [aiConfigured, setAiConfigured] = useState<boolean | null>(null)
+
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
+    useEffect(() => {
+        fetch('/api/user/ai-config').then(r => r.json()).then(data => {
+            if (!data.error) {
+                setAiProvider(data.provider)
+                setAiConfigured(data.provider !== 'ollama' ? !!data.apiKey : true)
+            } else {
+                setAiConfigured(false)
+            }
+        }).catch(() => setAiConfigured(false))
+    }, [])
+
     const tools = [
-        { 
+        {
             id: 'cost-calc',
-            title: 'Calculador de Costos', 
-            desc: 'Analiza geometría de STL y estima ROI', 
-            icon: Zap, 
-            context: 'Listo para calcular. Sube tu archivo STL y especifica el material para obtener un presupuesto detallado.' 
+            title: 'Calculador de Costos',
+            desc: 'Analiza geometría de STL y estima ROI',
+            icon: Zap,
+            context: 'Listo para calcular. Sube tu archivo STL y especifica el material para obtener un presupuesto detallado.'
         },
-        { 
+        {
             id: 'content-gen',
-            title: 'Content Generator', 
-            desc: 'Crea guiones y copies para redes sociales', 
-            icon: Sparkles, 
-            context: 'Hola jarri, ¿qué pieza queremos viralizar hoy? Puedo escribirte guiones para Reels o descripciones para Instagram.' 
+            title: 'Content Generator',
+            desc: 'Crea guiones y copies para redes sociales',
+            icon: Sparkles,
+            context: 'Hola jarri, ¿qué pieza queremos viralizar hoy? Puedo escribirte guiones para Reels o descripciones para Instagram.'
         },
-        { 
+        {
             id: 'automation',
-            title: 'Python Scripting', 
-            desc: 'Automatiza procesos del taller', 
-            icon: Terminal, 
-            context: 'Escribe lo que necesitas automatizar y te ayudaré con el código Python para tu flujo de n8n.' 
+            title: 'Python Scripting',
+            desc: 'Automatiza procesos del taller',
+            icon: Terminal,
+            context: 'Escribe lo que necesitas automatizar y te ayudaré con el código Python para tu flujo de n8n.'
         }
     ]
 
@@ -74,8 +98,7 @@ export default function AILabPage() {
         try {
             const metadata = await parseSTL(file)
             setAnalyzedFile(metadata)
-            
-            // Add system message about analysis
+
             setMessages(prev => [...prev, {
                 role: 'assistant',
                 content: `Análisis completado para **${metadata.name}**. \n\nDimensiones detectadas: ${metadata.dimensions.x.toFixed(1)}x${metadata.dimensions.y.toFixed(1)}x${metadata.dimensions.z.toFixed(1)} mm. \nVolumen: ${metadata.volumeCm3.toFixed(2)} cm³. \n\n¿Querés que calculemos el costo de producción?`
@@ -90,11 +113,12 @@ export default function AILabPage() {
 
     const handleSendMessage = async () => {
         if (!input.trim() && !analyzedFile) return
-        
+
         const userMessage = { role: 'user' as const, content: input }
         setMessages(prev => [...prev, userMessage])
         setInput('')
         setIsLoading(true)
+        setError(null)
 
         try {
             const response = await fetch('/api/ai/stream', {
@@ -107,7 +131,10 @@ export default function AILabPage() {
                 })
             })
 
-            if (!response.ok) throw new Error('Failed to connect to AI server')
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}))
+                throw new Error(errData.error || 'Error al conectar con la IA')
+            }
 
             const reader = response.body?.getReader()
             const decoder = new TextDecoder()
@@ -121,7 +148,7 @@ export default function AILabPage() {
 
                 const text = decoder.decode(value)
                 assistantContent += text
-                
+
                 setMessages(prev => {
                     const newMessages = [...prev]
                     newMessages[newMessages.length - 1].content = assistantContent
@@ -131,10 +158,6 @@ export default function AILabPage() {
         } catch (error: any) {
             console.error('Chat Error:', error)
             setError(error.message || 'Error de conexión con la IA')
-            setMessages(prev => [...prev.slice(0, -1), { 
-                role: 'assistant', 
-                content: `⚠️ **ERROR DEL LABORATORIO**: No se pudo establecer conexión con Ollama.\n\nPor favor, verifica que Ollama esté corriendo en tu PC con el modelo **gemma** activo.` 
-            }])
         } finally {
             setIsLoading(false)
         }
@@ -142,25 +165,52 @@ export default function AILabPage() {
 
     const handleQuickAction = (action: string) => {
         setInput(action)
-        // Optional: Trigger send automatically if desired
     }
 
     return (
         <div className="space-y-8 max-w-7xl mx-auto pb-12">
-            <input 
-                type="file" 
-                accept=".stl" 
-                ref={fileInputRef} 
-                className="hidden" 
+            <input
+                type="file"
+                accept=".stl"
+                ref={fileInputRef}
+                className="hidden"
                 onChange={handleFileChange}
             />
-            
-            <div className="flex justify-between items-center">
+
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight uppercase">AI LAB <span className="text-brand-orange">BETA</span></h1>
-                    <p className="text-neutral-500 text-sm mt-1">Laboratorio de inteligencia artificial local para JR3D.</p>
+                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight uppercase">AI LAB <span className="text-brand-orange">BETA</span></h1>
+                    <p className="text-neutral-500 text-xs sm:text-sm mt-1">Laboratorio de inteligencia artificial para JR3D.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    {aiProvider && (
+                        <div className="px-3 py-1.5 bg-brand-orange/10 border border-brand-orange/20 rounded-full text-[10px] font-black text-brand-orange flex items-center gap-1.5">
+                            <Cpu size={12} />
+                            {PROVIDER_LABELS[aiProvider] || aiProvider}
+                        </div>
+                    )}
+                    <Link
+                        href="/dashboard/settings"
+                        className="p-2 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition-all"
+                    >
+                        <Settings size={16} />
+                    </Link>
                 </div>
             </div>
+
+            {aiConfigured === false && (
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-start gap-3">
+                    <AlertTriangle size={18} className="text-yellow-500 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-xs font-bold text-yellow-500">IA no configurada</p>
+                        <p className="text-[10px] text-neutral-400 mt-1">
+                            Configurá tu proveedor de IA en{' '}
+                            <Link href="/dashboard/settings" className="text-brand-orange underline">Ajustes → Conectividad</Link>
+                            {' '}para usar el AI Lab. Si ya tenés Ollama corriendo local, debería funcionar automáticamente.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8 h-auto lg:h-[700px]">
                 {/* Sidebar: AI Tools */}
@@ -193,7 +243,7 @@ export default function AILabPage() {
 
                 {/* Main: AI Chat / Execution Area */}
                 <div className="lg:col-span-3 bg-neutral-950/40 border border-neutral-900 rounded-3xl flex flex-col backdrop-blur-xl overflow-hidden shadow-2xl relative">
-                    
+
                     {/* Lab Header */}
                     <div className="p-6 border-b border-neutral-900 flex justify-between items-center bg-white/[0.03]">
                         <div className="flex items-center gap-3">
@@ -201,14 +251,14 @@ export default function AILabPage() {
                                 <Cpu className="text-brand-orange" size={20} />
                             </div>
                             <div>
-                                <span className="font-bold text-sm tracking-tight text-white">Consola de Ejecución Local</span>
+                                <span className="font-bold text-sm tracking-tight text-white">Consola de IA</span>
                                 <div className="text-[10px] text-neutral-500 flex items-center gap-1 font-bold">
                                     CONTEXTO: <span className="text-brand-orange uppercase">{tools[selectedTool].title}</span>
                                 </div>
                             </div>
                         </div>
                         <div className="flex gap-2">
-                            <button 
+                            <button
                                 onClick={() => setMessages([])}
                                 className="p-2 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition-all"
                             >
@@ -245,8 +295,8 @@ export default function AILabPage() {
                                 </div>
                                 <div className={cn(
                                     "p-5 rounded-2xl max-w-[85%] backdrop-blur-md shadow-lg border",
-                                    msg.role === 'user' 
-                                        ? 'bg-white/5 border-white/5 rounded-tr-none' 
+                                    msg.role === 'user'
+                                        ? 'bg-white/5 border-white/5 rounded-tr-none'
                                         : 'bg-neutral-900/80 border-neutral-800 rounded-tl-none'
                                 )}>
                                     <p className="text-sm leading-relaxed text-neutral-200 whitespace-pre-wrap">
@@ -255,6 +305,16 @@ export default function AILabPage() {
                                 </div>
                             </div>
                         ))}
+
+                        {error && (
+                            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
+                                <p className="text-xs font-bold text-red-500 flex items-center gap-2">
+                                    <AlertTriangle size={14} /> ERROR
+                                </p>
+                                <p className="text-[11px] text-red-400/80 mt-1">{error}</p>
+                            </div>
+                        )}
+
                         <div ref={messagesEndRef} />
                     </div>
 
@@ -273,7 +333,7 @@ export default function AILabPage() {
                                         </span>
                                     </div>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => setAnalyzedFile(null)}
                                     className="p-1 hover:bg-white/10 rounded-full transition-colors text-neutral-500"
                                 >
@@ -283,7 +343,7 @@ export default function AILabPage() {
                         )}
 
                         <div className="relative group">
-                            <textarea 
+                            <textarea
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 disabled={isLoading || isAnalyzing}
@@ -293,18 +353,18 @@ export default function AILabPage() {
                                         handleSendMessage()
                                     }
                                 }}
-                                placeholder={isAnalyzing ? "Analizando geometría..." : "Escribe tu comando o consulta para la IA..."} 
+                                placeholder={isAnalyzing ? "Analizando geometría..." : "Escribe tu comando o consulta para la IA..."}
                                 className="w-full bg-neutral-900/50 border border-neutral-800 rounded-2xl px-6 py-4 pr-32 text-sm focus:outline-none focus:border-brand-orange/50 transition-all resize-none h-28 text-white placeholder-neutral-600 custom-scrollbar shadow-inner disabled:opacity-50"
                             />
                             <div className="absolute right-4 bottom-4 flex gap-2">
-                                <button 
+                                <button
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={isLoading || isAnalyzing}
                                     className="w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-xl flex items-center justify-center text-neutral-400 hover:text-white hover:border-neutral-500 transition-all disabled:opacity-50"
                                 >
                                     {isAnalyzing ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
                                 </button>
-                                <button 
+                                <button
                                     onClick={handleSendMessage}
                                     disabled={isLoading || isAnalyzing}
                                     className="px-5 h-10 bg-brand-orange rounded-xl flex items-center justify-center text-black font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-lg shadow-brand-orange/30 disabled:opacity-50"
@@ -325,7 +385,7 @@ export default function AILabPage() {
                     { title: 'GEOMETRY FIX', sub: 'Optimización STL', action: 'Analiza si hay errores en la malla de este archivo y sugerime mejoras de orientación.', icon: Play, color: 'text-green-500' },
                     { title: 'TAG GENERATOR', sub: 'Hashtags & SEO', action: 'Generame una lista de 20 hashtags y un copy SEO para vender esta pieza en Mercado Libre.', icon: Cpu, color: 'text-purple-500' },
                 ].map((card, i) => (
-                    <button 
+                    <button
                         key={i}
                         onClick={() => handleQuickAction(card.action)}
                         className="p-4 bg-neutral-900/30 border border-neutral-800 rounded-2xl text-left hover:border-brand-orange/50 transition-all hover:bg-brand-orange/5 group"

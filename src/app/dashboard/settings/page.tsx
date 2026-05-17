@@ -15,10 +15,20 @@ import {
     MessageSquare,
     CheckCircle2,
     XCircle,
-    Clock
+    Clock,
+    Cpu,
+    AlertCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Tooltip from '@/components/ui/Tooltip'
+
+const AI_PROVIDERS = [
+  { value: 'openai', label: 'OpenAI', defaultModel: 'gpt-4o-mini', defaultUrl: 'https://api.openai.com/v1' },
+  { value: 'groq', label: 'Groq (gratis rápido)', defaultModel: 'llama-3.3-70b-versatile', defaultUrl: 'https://api.groq.com/openai/v1' },
+  { value: 'gemini', label: 'Gemini (Google)', defaultModel: 'gemini-2.0-flash', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta' },
+  { value: 'ollama', label: 'Ollama (local)', defaultModel: 'gemma3:4b', defaultUrl: 'http://localhost:11434' },
+  { value: 'openrouter', label: 'OpenRouter', defaultModel: 'google/gemini-2.0-flash-001', defaultUrl: 'https://openrouter.ai/api/v1' },
+]
 
 type Tab = 'taller' | 'finanzas' | 'conectividad'
 
@@ -362,35 +372,126 @@ function FinanzasSettings({ settings, setSettings }: { settings: any, setSetting
 }
 
 function ConectividadSettings({ settings, setSettings }: { settings: any, setSettings: any }) {
+    const [aiConfig, setAiConfig] = useState<any>({ provider: 'ollama', apiKey: '', model: 'gemma3:4b', baseUrl: 'http://localhost:11434' })
+    const [aiSaving, setAiSaving] = useState(false)
+    const [aiSaved, setAiSaved] = useState(false)
+
+    useEffect(() => {
+        fetch('/api/user/ai-config').then(r => r.json()).then(data => {
+            if (!data.error) setAiConfig(data)
+        }).catch(() => {})
+    }, [])
+
+    const providerMeta = AI_PROVIDERS.find(p => p.value === aiConfig.provider) || AI_PROVIDERS[3]
+
+    const handleSaveAi = async () => {
+        setAiSaving(true)
+        try {
+            const res = await fetch('/api/user/ai-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    provider: aiConfig.provider,
+                    api_key: aiConfig.apiKey,
+                    model: aiConfig.model,
+                    base_url: aiConfig.baseUrl,
+                })
+            })
+            const data = await res.json()
+            if (!data.error) {
+                setAiSaved(true)
+                setTimeout(() => setAiSaved(false), 3000)
+            }
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setAiSaving(false)
+        }
+    }
+
+    const hasApiKey = aiConfig.provider === 'ollama' || (aiConfig.apiKey && aiConfig.apiKey.length > 5)
+
     if (!settings) return null;
 
     return (
         <div className="space-y-6">
+            {/* AI Provider Config */}
             <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-6">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center text-brand-orange border border-brand-orange/20">
-                            <Database size={24} />
+                            <Cpu size={24} />
                         </div>
                         <div>
-                            <h3 className="font-bold text-white">IA Local (Ollama)</h3>
-                            <p className="text-xs text-neutral-500">Conexión con el nucleo de inteligencia.</p>
+                            <h3 className="font-bold text-white">Proveedor de IA</h3>
+                            <p className="text-xs text-neutral-500">Cada usuario configura su propio motor de IA.</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] font-black border border-green-500/20">
-                        <CheckCircle2 size={12} /> CONECTADO
+                    <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black border ${
+                        hasApiKey
+                            ? 'bg-green-500/10 text-green-500 border-green-500/20'
+                            : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                    }`}>
+                        {hasApiKey ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                        {hasApiKey ? 'CONFIGURADO' : 'PENDIENTE'}
                     </div>
                 </div>
-                <div className="mt-6 flex gap-3">
-                    <input 
-                        type="text" 
-                        value={settings.ollamaUrl} 
-                        onChange={e => setSettings({...settings, ollamaUrl: e.target.value})}
-                        className="flex-1 bg-black/40 border border-neutral-800 p-3 rounded-xl text-xs font-mono text-neutral-400 outline-none focus:border-brand-orange" 
-                    />
+
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-neutral-500 uppercase">Proveedor</label>
+                        <select
+                            value={aiConfig.provider}
+                            onChange={e => {
+                                const p = AI_PROVIDERS.find(x => x.value === e.target.value) || AI_PROVIDERS[3]
+                                setAiConfig({ ...aiConfig, provider: e.target.value, model: p.defaultModel, baseUrl: p.defaultUrl })
+                            }}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange appearance-none"
+                        >
+                            {AI_PROVIDERS.map(p => (
+                                <option key={p.value} value={p.value}>{p.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-neutral-500 uppercase">Modelo</label>
+                        <input
+                            type="text"
+                            value={aiConfig.model}
+                            onChange={e => setAiConfig({ ...aiConfig, model: e.target.value })}
+                            placeholder={providerMeta.defaultModel}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange"
+                        />
+                    </div>
+                </div>
+
+                {aiConfig.provider !== 'ollama' && (
+                    <div className="mt-4 space-y-2">
+                        <label className="text-[10px] font-bold text-neutral-500 uppercase">API Key</label>
+                        <input
+                            type="password"
+                            value={aiConfig.apiKey}
+                            onChange={e => setAiConfig({ ...aiConfig, apiKey: e.target.value })}
+                            placeholder="sk-... o tu API key"
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange font-mono"
+                        />
+                        <p className="text-[9px] text-neutral-600">Tu API key se guarda encriptada y solo la usa tu cuenta.</p>
+                    </div>
+                )}
+
+                <div className="mt-4">
+                    <button
+                        onClick={handleSaveAi}
+                        disabled={aiSaving}
+                        className="px-6 py-2.5 bg-brand-orange text-black rounded-xl text-xs font-black hover:scale-105 transition-all shadow-lg shadow-brand-orange/20 disabled:opacity-50 flex items-center gap-2"
+                    >
+                        {aiSaving ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />}
+                        {aiSaved ? 'GUARDADO ✓' : 'GUARDAR CONFIGURACIÓN IA'}
+                    </button>
                 </div>
             </div>
 
+            {/* Webhook Config (global) */}
             <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-6">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
@@ -413,12 +514,12 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                     )}
                 </div>
                 <div className="mt-6">
-                    <input 
-                        type="text" 
-                        value={settings.webhookUrl} 
+                    <input
+                        type="text"
+                        value={settings.webhookUrl}
                         onChange={e => setSettings({...settings, webhookUrl: e.target.value})}
                         placeholder="https://tu-n8n.com/webhook/..."
-                        className="w-full bg-black/40 border border-neutral-800 p-3 rounded-xl text-xs font-mono text-neutral-400 outline-none focus:border-brand-orange" 
+                        className="w-full bg-black/40 border border-neutral-800 p-3 rounded-xl text-xs font-mono text-neutral-400 outline-none focus:border-brand-orange"
                     />
                 </div>
             </div>
