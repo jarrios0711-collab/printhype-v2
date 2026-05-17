@@ -36,6 +36,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
+import Tooltip from '@/components/ui/Tooltip'
 // --- Types ---
 type ProjectStatus = 'idea' | 'design' | 'ready' | 'printing' | 'post' | 'done'
 
@@ -206,15 +207,21 @@ export default function ProjectsPage() {
           <p className="text-neutral-500 text-sm mt-1">Gestión visual de la cadena de producción.</p>
         </div>
         <div className="flex gap-2">
-            <button className="flex items-center gap-2 px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold text-neutral-400 hover:text-white transition-all">
-                <Settings2 size={14} /> Filtros
-            </button>
-            <button 
-                onClick={() => setIsAddModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-brand-orange text-black rounded-xl text-xs font-black transition-all hover:scale-105 active:scale-95 shadow-lg shadow-brand-orange/20"
-            >
-                <Plus size={14} /> NUEVO PROYECTO
-            </button>
+            <div className="flex gap-2">
+                <Tooltip content="Filtrar proyectos">
+                    <button className="flex items-center gap-2 px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold text-neutral-400 hover:text-white transition-all tap-target">
+                        <Settings2 size={14} /> Filtros
+                    </button>
+                </Tooltip>
+                <Tooltip content="Crear nuevo proyecto">
+                    <button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-brand-orange text-black rounded-xl text-xs font-black transition-all hover:scale-105 active:scale-95 shadow-lg shadow-brand-orange/20 tap-target"
+                    >
+                        <Plus size={14} /> NUEVO PROYECTO
+                    </button>
+                </Tooltip>
+            </div>
         </div>
       </div>
 
@@ -256,7 +263,7 @@ export default function ProjectsPage() {
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}
         >
-          <div className="flex gap-6 min-h-[500px]">
+          <div className="flex gap-4 sm:gap-6 min-h-[500px] px-1 sm:px-0">
             {COLUMNS.map((col) => (
               <KanbanColumn 
                 key={col.id} 
@@ -297,7 +304,7 @@ function KanbanColumn({ column, projects }: { column: Column, projects: Project[
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col w-80 min-w-[320px] rounded-2xl bg-neutral-900/50 border",
+        "flex flex-col w-72 sm:w-80 min-w-[280px] sm:min-w-[320px] rounded-2xl bg-neutral-900/50 border",
         column.color
       )}
     >

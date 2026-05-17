@@ -27,9 +27,14 @@ export async function proxy(request: NextRequest) {
 
   const isLoginPage = request.nextUrl.pathname.startsWith('/login')
   const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
+  const isApiRoute = request.nextUrl.pathname.startsWith('/api')
   const isPublicAsset = request.nextUrl.pathname.startsWith('/_next') ||
+    request.nextUrl.pathname === '/' ||
     request.nextUrl.pathname === '/favicon.ico' ||
     request.nextUrl.pathname.startsWith('/sw.js')
+
+  // Allow API routes — they use service role key internally
+  if (isApiRoute) return supabaseResponse
 
   if (!user && !isLoginPage && !isAuthPage && !isPublicAsset) {
     const url = request.nextUrl.clone()

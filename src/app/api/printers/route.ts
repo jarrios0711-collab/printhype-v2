@@ -16,14 +16,7 @@ export async function GET() {
 
     if (error && error.code !== '42P01') throw error
 
-    if (!printers || printers.length === 0) {
-      return NextResponse.json([
-        { id: 'default-1', name: 'Creality K1 Max', status: 'online', created_at: new Date().toISOString() },
-        { id: 'default-2', name: 'Ender 3 v3', status: 'online', created_at: new Date().toISOString() },
-      ])
-    }
-
-    return NextResponse.json(printers)
+    return NextResponse.json(printers || [])
   } catch (error) {
     console.error('GET /api/printers error:', error)
     return NextResponse.json({ error: 'Error al cargar impresoras' }, { status: 500 })

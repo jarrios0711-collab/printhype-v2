@@ -162,31 +162,31 @@ export default function AILabPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 h-[700px]">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8 h-auto lg:h-[700px]">
                 {/* Sidebar: AI Tools */}
-                <div className="lg:col-span-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="lg:col-span-1 flex lg:flex-col gap-3 lg:gap-4 overflow-x-auto lg:overflow-y-auto pr-0 lg:pr-2 pb-2 lg:pb-0 custom-scrollbar">
                     {tools.map((tool, i) => (
-                        <button 
-                            key={i} 
+                        <button
+                            key={i}
                             onClick={() => setSelectedTool(i)}
                             className={cn(
-                                "w-full text-left p-4 rounded-2xl border transition-all duration-300 group",
-                                selectedTool === i 
-                                    ? 'bg-brand-orange/10 border-brand-orange/40 shadow-[0_0_20px_rgba(255,102,0,0.1)]' 
+                                "text-left p-3 lg:p-4 rounded-2xl border transition-all duration-300 group shrink-0 w-48 lg:w-full",
+                                selectedTool === i
+                                    ? 'bg-brand-orange/10 border-brand-orange/40 shadow-[0_0_20px_rgba(255,102,0,0.1)]'
                                     : 'bg-neutral-950/40 border-neutral-900 hover:border-neutral-700'
                             )}
                         >
                             <div className={cn(
-                                "p-2 rounded-lg inline-block mb-3 transition-colors",
+                                "p-2 rounded-lg inline-block mb-2 lg:mb-3 transition-colors",
                                 selectedTool === i ? 'bg-brand-orange text-black' : 'bg-neutral-800 text-neutral-400 group-hover:text-white'
                             )}>
                                 <tool.icon size={16} />
                             </div>
                             <h3 className={cn(
-                                "text-sm font-bold block transition-colors",
+                                "text-xs lg:text-sm font-bold block transition-colors",
                                 selectedTool === i ? 'text-brand-orange' : 'text-neutral-300'
                              )}>{tool.title}</h3>
-                            <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">{tool.desc}</p>
+                            <p className="hidden lg:block text-[10px] text-neutral-500 mt-1 leading-relaxed">{tool.desc}</p>
                         </button>
                     ))}
                 </div>
@@ -318,7 +318,7 @@ export default function AILabPage() {
             </div>
 
             {/* Quick Actions / Lab Services */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in slide-in-from-bottom-4 duration-700 delay-200">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 animate-in slide-in-from-bottom-4 duration-700 delay-200">
                 {[
                     { title: 'VIRAL CHECK', sub: 'Guion para Reels', action: 'Generame un guion para un Reel de Instagram que sea viral para esta pieza. Enfocate en el proceso de impresión.', icon: Sparkles, color: 'text-brand-orange' },
                     { title: 'COSTO TOTAL', sub: 'Reporte de ROI', action: 'Calculame el costo total de producción incluyendo electricidad y margen de ganancia para este STL.', icon: Zap, color: 'text-brand-cyan' },

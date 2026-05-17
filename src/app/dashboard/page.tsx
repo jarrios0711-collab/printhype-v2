@@ -54,24 +54,24 @@ export default function DashboardPage() {
     ]
 
     return (
-        <div className="space-y-10 max-w-7xl mx-auto">
+        <div className="space-y-6 sm:space-y-10 max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-brand-orange text-xs font-black uppercase tracking-[0.2em]">
+                    <div className="flex items-center gap-2 text-brand-orange text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]">
                         <div className="w-1.5 h-1.5 rounded-full bg-brand-orange animate-pulse"></div>
                         Sistema Operativo JR3D v2.5
                     </div>
-                    <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-white">
+                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter text-white">
                         Buenos días, <span className="text-brand-orange">{userName}</span>
                     </h1>
                 </div>
-                <div className="relative">
-                    <input type="text" placeholder="Buscar..." className="bg-black/40 border border-neutral-800 rounded-xl px-4 py-2 pl-10 text-xs focus:outline-none focus:border-brand-orange/50 transition-all w-56" />
+                <div className="relative w-full sm:w-auto">
+                    <input type="text" placeholder="Buscar..." className="w-full sm:w-56 bg-black/40 border border-neutral-800 rounded-xl px-4 py-2 pl-10 text-xs focus:outline-none focus:border-brand-orange/50 transition-all" />
                     <Search className="absolute left-3 top-2.5 text-neutral-600" size={14} />
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
                 {statCards.map((stat, i) => (
                     <div key={i} className="bg-neutral-950/40 border border-neutral-900 p-5 sm:p-6 rounded-3xl hover:border-neutral-700 transition-all group relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -86,10 +86,10 @@ export default function DashboardPage() {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
                 <div className="lg:col-span-2">
-                    <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-6 sm:p-8">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-4 sm:p-6 lg:p-8">
+                        <div className="flex justify-between items-center mb-4 sm:mb-6">
                             <h2 className="text-base sm:text-xl font-bold flex items-center gap-3">
                                 <Activity className="text-brand-orange" size={20} />
                                 Actividad Reciente
