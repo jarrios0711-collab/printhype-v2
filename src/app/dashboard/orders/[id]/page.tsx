@@ -21,6 +21,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Breadcrumb from '@/components/ui/Breadcrumb'
 
 const getWaUrl = (phone: string, name: string, project: string) => {
     if (!phone) return '#';
@@ -116,13 +117,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     <div className="space-y-8 max-w-6xl mx-auto pb-12">
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <Link 
-          href="/dashboard/orders"
-          className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest"
-        >
-          <ChevronLeft size={16} /> Volver a Pedidos
-        </Link>
-        
+        <Breadcrumb crumbs={[
+          { label: 'Pedidos', href: '/dashboard/orders' },
+          { label: order ? order.customerName : 'Detalle' },
+        ]} />
+
         <div className="flex justify-between items-end">
           <div>
             <div className="flex items-center gap-3 mb-2">

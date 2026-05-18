@@ -431,6 +431,7 @@ function OrdersPage() {
                                 <button
                                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                     disabled={currentPage === 1}
+                                    aria-label="Página anterior"
                                     className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all tap-target"
                                 >
                                     <ChevronLeft size={14} />
@@ -443,6 +444,7 @@ function OrdersPage() {
                                 <button
                                     onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
                                     disabled={currentPage >= pagination.totalPages}
+                                    aria-label="Página siguiente"
                                     className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all tap-target"
                                 >
                                     <ChevronRight size={14} />
