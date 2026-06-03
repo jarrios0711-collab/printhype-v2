@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { parseSTL, STLMetadata } from '@/lib/stl-utils'
 import { cn } from '@/lib/utils'
+import Tooltip from '@/components/ui/Tooltip'
 
 interface Message {
   role: 'user' | 'assistant';
@@ -189,12 +190,14 @@ export default function AILabPage() {
                             {PROVIDER_LABELS[aiProvider] || aiProvider}
                         </div>
                     )}
-                    <Link
-                        href="/dashboard/settings"
-                        className="p-2 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition-all"
-                    >
-                        <Settings size={16} />
-                    </Link>
+                    <Tooltip content="Configurar proveedor de IA en Ajustes">
+                        <Link
+                            href="/dashboard/settings"
+                            className="p-2 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition-all"
+                        >
+                            <Settings size={16} />
+                        </Link>
+                    </Tooltip>
                 </div>
             </div>
 
@@ -216,8 +219,8 @@ export default function AILabPage() {
                 {/* Sidebar: AI Tools */}
                 <div className="lg:col-span-1 flex lg:flex-col gap-3 lg:gap-4 overflow-x-auto lg:overflow-y-auto pr-0 lg:pr-2 pb-2 lg:pb-0 custom-scrollbar">
                     {tools.map((tool, i) => (
+                        <Tooltip key={i} content={tool.desc} position="right">
                         <button
-                            key={i}
                             onClick={() => setSelectedTool(i)}
                             className={cn(
                                 "text-left p-3 lg:p-4 rounded-2xl border transition-all duration-300 group shrink-0 w-48 lg:w-full",
@@ -238,6 +241,7 @@ export default function AILabPage() {
                              )}>{tool.title}</h3>
                             <p className="hidden lg:block text-[10px] text-neutral-500 mt-1 leading-relaxed">{tool.desc}</p>
                         </button>
+                        </Tooltip>
                     ))}
                 </div>
 
@@ -258,12 +262,14 @@ export default function AILabPage() {
                             </div>
                         </div>
                         <div className="flex gap-2">
-                            <button
-                                onClick={() => setMessages([])}
-                                className="p-2 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition-all"
-                            >
-                                <RefreshCw size={16} />
-                            </button>
+                            <Tooltip content="Limpiar historial de conversación">
+                                <button
+                                    onClick={() => setMessages([])}
+                                    className="p-2 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition-all"
+                                >
+                                    <RefreshCw size={16} />
+                                </button>
+                            </Tooltip>
                         </div>
                     </div>
 
@@ -357,20 +363,24 @@ export default function AILabPage() {
                                 className="w-full bg-neutral-900/50 border border-neutral-800 rounded-2xl px-6 py-4 pr-32 text-sm focus:outline-none focus:border-brand-orange/50 transition-all resize-none h-28 text-white placeholder-neutral-600 custom-scrollbar shadow-inner disabled:opacity-50"
                             />
                             <div className="absolute right-4 bottom-4 flex gap-2">
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={isLoading || isAnalyzing}
-                                    className="w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-xl flex items-center justify-center text-neutral-400 hover:text-white hover:border-neutral-500 transition-all disabled:opacity-50"
-                                >
-                                    {isAnalyzing ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
-                                </button>
-                                <button
-                                    onClick={handleSendMessage}
-                                    disabled={isLoading || isAnalyzing}
-                                    className="px-5 h-10 bg-brand-orange rounded-xl flex items-center justify-center text-black font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-lg shadow-brand-orange/30 disabled:opacity-50"
-                                >
-                                    {isLoading ? <Loader2 size={16} className="animate-spin" /> : <>ENVIAR <Send size={14} className="ml-2" /></>}
-                                </button>
+                                <Tooltip content="Subir archivo STL para análisis técnico">
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isLoading || isAnalyzing}
+                                        className="w-10 h-10 bg-neutral-800 border border-neutral-700 rounded-xl flex items-center justify-center text-neutral-400 hover:text-white hover:border-neutral-500 transition-all disabled:opacity-50"
+                                    >
+                                        {isAnalyzing ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
+                                    </button>
+                                </Tooltip>
+                                <Tooltip content="Enviar mensaje a la IA">
+                                    <button
+                                        onClick={handleSendMessage}
+                                        disabled={isLoading || isAnalyzing}
+                                        className="px-5 h-10 bg-brand-orange rounded-xl flex items-center justify-center text-black font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-lg shadow-brand-orange/30 disabled:opacity-50"
+                                    >
+                                        {isLoading ? <Loader2 size={16} className="animate-spin" /> : <>ENVIAR <Send size={14} className="ml-2" /></>}
+                                    </button>
+                                </Tooltip>
                             </div>
                         </div>
                     </div>
@@ -385,8 +395,8 @@ export default function AILabPage() {
                     { title: 'GEOMETRY FIX', sub: 'Optimización STL', action: 'Analiza si hay errores en la malla de este archivo y sugerime mejoras de orientación.', icon: Play, color: 'text-green-500' },
                     { title: 'TAG GENERATOR', sub: 'Hashtags & SEO', action: 'Generame una lista de 20 hashtags y un copy SEO para vender esta pieza en Mercado Libre.', icon: Cpu, color: 'text-purple-500' },
                 ].map((card, i) => (
+                    <Tooltip key={i} content={`${card.title}: ${card.sub}`}>
                     <button
-                        key={i}
                         onClick={() => handleQuickAction(card.action)}
                         className="p-4 bg-neutral-900/30 border border-neutral-800 rounded-2xl text-left hover:border-brand-orange/50 transition-all hover:bg-brand-orange/5 group"
                     >
@@ -396,6 +406,7 @@ export default function AILabPage() {
                         <h4 className="text-[10px] font-black text-white uppercase tracking-widest">{card.title}</h4>
                         <p className="text-[11px] text-neutral-500 font-bold uppercase">{card.sub}</p>
                     </button>
+                    </Tooltip>
                 ))}
             </div>
         </div>

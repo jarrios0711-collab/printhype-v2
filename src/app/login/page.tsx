@@ -55,6 +55,7 @@ export default async function LoginPage(props: { searchParams?: Promise<{ error?
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
+              title="Iniciar sesión con tu cuenta JR3D"
               className="flex-1 py-3 bg-brand-orange hover:bg-orange-600 font-black text-black text-xs uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] shadow-[0_0_20px_rgba(255,102,0,0.2)]"
             >
               Ingresar
@@ -62,6 +63,7 @@ export default async function LoginPage(props: { searchParams?: Promise<{ error?
             <button
               type="submit"
               formAction={signup}
+              title="Crear una cuenta nueva en PrintHype"
               className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 font-black text-neutral-300 text-xs uppercase tracking-widest rounded-xl transition-all border border-neutral-700 hover:border-brand-orange/50"
             >
               Crear Cuenta

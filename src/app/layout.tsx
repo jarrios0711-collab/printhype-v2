@@ -26,6 +26,7 @@ export const viewport: Viewport = {
 };
 
 import SplashScreen from "@/components/ui/SplashScreen";
+import PwaRegister from "@/components/PwaRegister";
 
 export default function RootLayout({
     children,
@@ -35,22 +36,13 @@ export default function RootLayout({
     return (
         <html lang="es">
             <head>
-                <link rel="manifest" href="/manifest.json" />
                 <meta name="theme-color" content="#FF6600" />
                 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
             </head>
             <body className={`${inter.className} bg-brand-dark text-white min-h-screen`}>
                 <SplashScreen />
                 {children}
-                <script dangerouslySetInnerHTML={{ __html: `
-                    if ('serviceWorker' in navigator) {
-                        window.addEventListener('load', () => {
-                            navigator.serviceWorker.register('/sw.js').then(reg => {
-                                console.log('SW registrado:', reg.scope);
-                            }).catch(err => console.warn('SW error:', err));
-                        });
-                    }
-                ` }} />
+                <PwaRegister />
             </body>
         </html>
     );

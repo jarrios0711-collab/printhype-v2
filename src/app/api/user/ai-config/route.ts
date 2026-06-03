@@ -11,7 +11,7 @@ const AI_CONFIG_DEFAULTS = {
 }
 
 const AiConfigSchema = z.object({
-  provider: z.enum(['openai', 'groq', 'gemini', 'ollama', 'openrouter']),
+  provider: z.enum(['openai', 'groq', 'gemini', 'deepseek', 'ollama', 'openrouter']),
   api_key: z.string().optional().default(''),
   model: z.string().optional().default('gemma3:4b'),
   base_url: z.string().optional().default('http://localhost:11434'),
@@ -65,28 +65,53 @@ export async function POST(req: Request) {
     const parsed = AiConfigSchema.parse(body)
 
     const admin = getServiceClient()
-    const { data, error } = await admin
-      .from('user_ai_config')
-      .upsert({
-        user_id: user.id,
-        provider: parsed.provider,
-        api_key: parsed.api_key,
-        model: parsed.model,
-        base_url: parsed.base_url,
-        updated_at: new Date().toISOString(),
-      })
-      .select()
-      .single()
 
-    if (error) throw error
+    // Primero intentar actualizar si ya existe
+    const { data: existing } = await admin
+      .from('user_ai_config')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    let result
+    if (existing) {
+      // Update existing
+      result = await admin
+        .from('user_ai_config')
+        .update({
+          provider: parsed.provider,
+          api_key: parsed.api_key,
+          model: parsed.model,
+          base_url: parsed.base_url,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id)
+        .select()
+        .single()
+    } else {
+      // Insert new
+      result = await admin
+        .from('user_ai_config')
+        .insert({
+          user_id: user.id,
+          provider: parsed.provider,
+          api_key: parsed.api_key,
+          model: parsed.model,
+          base_url: parsed.base_url,
+        })
+        .select()
+        .single()
+    }
+
+    if (result.error) throw result.error
 
     return NextResponse.json({
       success: true,
       data: {
-        provider: data.provider,
-        apiKey: data.api_key || '',
-        model: data.model,
-        baseUrl: data.base_url,
+        provider: result.data.provider,
+        apiKey: result.data.api_key || '',
+        model: result.data.model,
+        baseUrl: result.data.base_url,
       }
     })
   } catch (error: any) {

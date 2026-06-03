@@ -62,3 +62,43 @@ create table if not exists ajustes (
 -- Insertar config por defecto
 insert into ajustes (id) values ('global')
 on conflict (id) do nothing;
+
+-- 6. Perfiles de filamento para impresion
+create table if not exists filament_profiles (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  type text not null default 'PLA',
+  nozzle_temp numeric default 210,
+  bed_temp numeric default 60,
+  brand text default '',
+  color text default '#FF6600',
+  created_at timestamptz default now()
+);
+
+-- 7. Configuracion de IA por usuario
+create table if not exists user_ai_config (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  provider text default 'ollama',
+  api_key text default '',
+  model text default 'gemma3:4b',
+  base_url text default 'http://localhost:11434',
+  updated_at timestamptz default now(),
+  unique(user_id)
+);
+
+-- 8. Campañas virales de marketing
+create table if not exists viral_campaigns (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete set null,
+  title text not null,
+  platform text default 'Instagram',
+  status text default 'DRAFT',
+  views text default '-',
+  reach text default '-',
+  content_idea text default '',
+  created_at timestamptz default now()
+);
+
+-- 9. Agregar columna stock_deducted a order_registry
+alter table order_registry add column if not exists stock_deducted boolean default false;

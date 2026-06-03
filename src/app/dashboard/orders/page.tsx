@@ -14,7 +14,8 @@ import {
     AlertCircle,
     User,
     Package,
-    FileSpreadsheet
+    FileSpreadsheet,
+    Activity
 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
@@ -135,9 +136,10 @@ function OrdersPage() {
 
         setIsSaving(true)
         try {
+            const userWebhook = localStorage.getItem('ph_user_webhook') || ''
             const res = await fetch('/api/orders', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...(userWebhook ? { 'x-webhook-url': userWebhook } : {}) },
                 body: JSON.stringify(formData)
             })
             const data = await res.json()
@@ -271,32 +273,36 @@ function OrdersPage() {
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <div className="flex-1 relative group">
-                    <input
-                        type="text"
-                        placeholder="Buscar por cliente, ID o proyecto..."
-                        value={searchQuery}
-                        onChange={(e) => {
-                            setSearchQuery(e.target.value)
-                            setCurrentPage(1)
-                        }}
-                        className="w-full bg-neutral-950/40 border border-neutral-900 rounded-xl px-4 py-2.5 pl-12 text-sm focus:outline-none focus:border-brand-orange/50 transition-all font-medium text-white tap-target"
-                    />
+                    <Tooltip content="Buscar órdenes por nombre de cliente, ID o proyecto">
+                        <input
+                            type="text"
+                            placeholder="Buscar por cliente, ID o proyecto..."
+                            value={searchQuery}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value)
+                                setCurrentPage(1)
+                            }}
+                            className="w-full bg-neutral-950/40 border border-neutral-900 rounded-xl px-4 py-2.5 pl-12 text-sm focus:outline-none focus:border-brand-orange/50 transition-all font-medium text-white tap-target"
+                        />
+                    </Tooltip>
                     <Search className="absolute left-4 top-3 text-neutral-600 group-focus-within:text-brand-orange transition-colors" size={16} />
                 </div>
-                <select
-                    value={statusFilter}
-                    onChange={(e) => {
-                        setStatusFilter(e.target.value)
-                        setCurrentPage(1)
-                    }}
-                    className="px-4 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold appearance-none focus:outline-none focus:border-brand-orange/50 text-neutral-400 cursor-pointer tap-target"
-                >
-                    <option value="">Todos los estados</option>
-                    <option value="PENDING">Pendientes</option>
-                    <option value="PRINTING">En Imprenta</option>
-                    <option value="SHIPPED">Para Enviar</option>
-                    <option value="COMPLETED">Completados</option>
-                </select>
+                <Tooltip content="Filtrar órdenes por estado de producción">
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => {
+                            setStatusFilter(e.target.value)
+                            setCurrentPage(1)
+                        }}
+                        className="px-4 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold appearance-none focus:outline-none focus:border-brand-orange/50 text-neutral-400 cursor-pointer tap-target"
+                    >
+                        <option value="">Todos los estados</option>
+                        <option value="PENDING">Pendientes</option>
+                        <option value="PRINTING">En Imprenta</option>
+                        <option value="SHIPPED">Para Enviar</option>
+                        <option value="COMPLETED">Completados</option>
+                    </select>
+                </Tooltip>
             </div>
 
             <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl overflow-hidden backdrop-blur-md">
@@ -585,17 +591,19 @@ function OrdersPage() {
                     </div>
 
                     <div className="pt-4 flex gap-3">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setIsNewOrderModalOpen(false)
-                                setFormErrors({})
-                            }}
-                            disabled={isSaving}
-                            className="flex-1 py-3 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all text-neutral-400 disabled:opacity-50 tap-target"
-                        >
-                            CANCELAR
-                        </button>
+                        <Tooltip content="Descartar y cerrar el formulario">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsNewOrderModalOpen(false)
+                                    setFormErrors({})
+                                }}
+                                disabled={isSaving}
+                                className="flex-1 py-3 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all text-neutral-400 disabled:opacity-50 tap-target"
+                            >
+                                CANCELAR
+                            </button>
+                        </Tooltip>
                         <Tooltip content="Guardar nueva orden">
                             <button
                                 type="submit"
@@ -611,25 +619,6 @@ function OrdersPage() {
                 </form>
             </Modal>
         </div>
-    )
-}
-
-function Activity(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-        </svg>
     )
 }
 

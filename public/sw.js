@@ -1,8 +1,10 @@
-const CACHE_NAME = 'printhype-v3';
+const CACHE_NAME = 'printhype-v4';
 const STATIC_CACHE = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/icon.svg',
+  '/offline',
 ];
 
 self.addEventListener('install', (event) => {
@@ -36,7 +38,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation / HTML pages: network-first, fallback to cache
+  // Offline page
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).then((response) => {
@@ -45,7 +47,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
         return response;
-      }).catch(() => caches.match(request))
+      }).catch(() => caches.match('/offline'))
     );
     return;
   }

@@ -8,6 +8,7 @@ const PROVIDER_META = {
   openai: { name: 'OpenAI', defaultModel: 'gpt-4o-mini', defaultUrl: 'https://api.openai.com/v1' },
   groq: { name: 'Groq', defaultModel: 'llama-3.3-70b-versatile', defaultUrl: 'https://api.groq.com/openai/v1' },
   gemini: { name: 'Gemini', defaultModel: 'gemini-2.0-flash', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta' },
+  deepseek: { name: 'DeepSeek', defaultModel: 'deepseek-chat', defaultUrl: 'https://api.deepseek.com/v1' },
   ollama: { name: 'Ollama', defaultModel: 'gemma3:4b', defaultUrl: 'http://localhost:11434' },
   openrouter: { name: 'OpenRouter', defaultModel: 'google/gemini-2.0-flash-001', defaultUrl: 'https://openrouter.ai/api/v1' },
 }
@@ -34,7 +35,10 @@ async function streamOpenAI(baseUrl: string, apiKey: string, model: string, mess
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({ model, messages, stream: true }),
   })
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`API error: ${res.status} — ${body.slice(0, 200)}`)
+  }
 
   return new ReadableStream({
     async start(controller) {
@@ -158,6 +162,8 @@ export async function POST(req: NextRequest) {
     const apiKey = config?.api_key || ''
     const model = config?.model || meta.defaultModel
     const baseUrl = config?.base_url || meta.defaultUrl
+
+    console.log('[ai/stream] provider=%s model=%s baseUrl=%s hasKey=%s', provider, model, baseUrl, apiKey ? 'yes' : 'NO')
 
     const systemPrompt = buildSystemPrompt(context, fileData)
     const userMessage = `Usuario: ${prompt}\n\nAsistente:`

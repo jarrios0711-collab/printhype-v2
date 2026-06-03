@@ -21,7 +21,13 @@ export default function ParticleBackground() {
     camera.position.z = 30
 
     // Renderer
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
+    let renderer: THREE.WebGLRenderer
+    try {
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
+    } catch (e) {
+      console.warn('WebGL is not supported in this environment, particle background disabled.', e)
+      return
+    }
     renderer.setSize(width, height)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     container.appendChild(renderer.domElement)

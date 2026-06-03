@@ -2,15 +2,14 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { 
-  ChevronLeft, 
-  User, 
-  Phone, 
-  Calendar, 
-  Package, 
-  Clock, 
-  CheckCircle2, 
-  Truck, 
+import {
+  ChevronLeft,
+  User,
+  Phone,
+  Package,
+  Clock,
+  CheckCircle2,
+  Truck,
   AlertCircle,
   MoreVertical,
   Layers,
@@ -18,10 +17,13 @@ import {
   DollarSign,
   Box,
   Printer as PrinterIcon,
-  Loader2
+  Loader2,
+  BrainCircuit
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Breadcrumb from '@/components/ui/Breadcrumb'
+import Tooltip from '@/components/ui/Tooltip'
+import { generateInvoiceHtml } from '@/lib/invoice'
 
 const getWaUrl = (phone: string, name: string, project: string) => {
     if (!phone) return '#';
@@ -65,9 +67,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const handleUpdateStatus = async (newStatus: string) => {
     setIsUpdating(true)
     try {
+      const userWebhook = typeof window !== 'undefined' ? localStorage.getItem('ph_user_webhook') || '' : ''
       const res = await fetch(`/api/orders/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(userWebhook ? { 'x-webhook-url': userWebhook } : {}) },
         body: JSON.stringify({ status: newStatus })
       })
       const data = await res.json()
@@ -79,6 +82,65 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     } finally {
       setIsUpdating(false)
     }
+  }
+
+  const [printers, setPrinters] = useState<any[]>([])
+  const [settings, setSettings] = useState<any>(null)
+
+  useEffect(() => {
+    fetch('/api/printers').then(r => r.json()).then(data => { if (!data.error) setPrinters(data) }).catch(() => {})
+    fetch('/api/settings').then(r => r.json()).then(data => { if (!data.error) setSettings(data) }).catch(() => {})
+  }, [])
+
+  const handleDownloadInvoice = () => {
+    if (!order) return
+    const html = generateInvoiceHtml(order, settings)
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  const statusProgress: Record<string, number> = {
+    PENDING: 0, PRINTING: 45, SHIPPED: 85, COMPLETED: 100, CANCELLED: 0,
+  }
+
+  const statusLabel: Record<string, string> = {
+    PENDING: 'Esperando inicio de producción',
+    PRINTING: 'Imprimiendo...',
+    SHIPPED: 'Listo para entregar',
+    COMPLETED: 'Finalizado',
+    CANCELLED: 'Cancelado',
+  }
+
+  const calcEstimatedDate = (createdAt: string, status: string) => {
+    if (status === 'COMPLETED') return 'Entregado'
+    const created = new Date(createdAt)
+    const eta = new Date(created)
+    eta.setDate(eta.getDate() + 3)
+    return eta.toLocaleDateString('es-AR', { weekday: 'long', hour: '2-digit', minute: '2-digit' })
+  }
+
+  const calcCostMaterial = () => {
+    if (!order?.weightGrams) return 0
+    return Math.round(order.weightGrams * 1.24 * 0.025)
+  }
+
+  const calcCostEnergy = () => {
+    if (!settings?.kwhPrice) return 420
+    return Math.round(settings.kwhPrice * 3.5)
+  }
+
+  const calcCostLabor = () => {
+    if (!settings?.laborHourPrice) return 800
+    return Math.round(settings.laborHourPrice)
+  }
+
+  const calcTotalCost = () => calcCostMaterial() + calcCostEnergy() + calcCostLabor()
+
+  const calcMargin = () => {
+    if (!order?.totalPrice || calcTotalCost() === 0) return 0
+    return ((order.totalPrice - calcTotalCost()) / order.totalPrice * 100).toFixed(1)
   }
 
   if (isLoading) return (
@@ -151,26 +213,40 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           </div>
           
           <div className="flex gap-3">
-            <button className="px-5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-black hover:bg-neutral-800 transition-all text-neutral-300">
-              DESCARGAR FACTURA
-            </button>
-            <div className="relative group">
-              <button 
-                disabled={isUpdating}
-                className="px-5 py-2.5 bg-brand-orange text-black rounded-xl text-xs font-black hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,102,0,0.3)] flex items-center gap-2"
+            <Tooltip content="Descargar comprobante del pedido en PDF">
+              <button
+                onClick={handleDownloadInvoice}
+                className="px-5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-black hover:bg-neutral-800 transition-all text-neutral-300"
               >
-                {isUpdating ? <Loader2 size={14} className="animate-spin" /> : 'ACTUALIZAR ESTADO'}
+                DESCARGAR FACTURA
               </button>
+            </Tooltip>
+            <div className="relative group">
+              <Tooltip content="Cambiar el estado de producción del pedido">
+                <button
+                  disabled={isUpdating}
+                  className="px-5 py-2.5 bg-brand-orange text-black rounded-xl text-xs font-black hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,102,0,0.3)] flex items-center gap-2"
+                >
+                  {isUpdating ? <Loader2 size={14} className="animate-spin" /> : 'ACTUALIZAR ESTADO'}
+                </button>
+              </Tooltip>
               
               <div className="absolute top-full right-0 mt-2 w-48 bg-neutral-950 border border-neutral-800 rounded-2xl p-2 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                {['PENDING', 'PRINTING', 'SHIPPED', 'COMPLETED', 'CANCELLED'].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => handleUpdateStatus(s)}
-                    className="w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest text-neutral-500 hover:text-white hover:bg-white/5 rounded-xl transition-all"
-                  >
-                    {s}
-                  </button>
+                {[
+                  { key: 'PENDING', label: 'Pendiente', desc: 'Esperando inicio de producción' },
+                  { key: 'PRINTING', label: 'En Imprenta', desc: 'Actualmente en proceso de impresión' },
+                  { key: 'SHIPPED', label: 'Para Enviar', desc: 'Listo para entrega al cliente' },
+                  { key: 'COMPLETED', label: 'Completado', desc: 'Pedido finalizado y entregado' },
+                  { key: 'CANCELLED', label: 'Cancelado', desc: 'Pedido cancelado' },
+                ].map((s) => (
+                  <Tooltip key={s.key} content={s.desc} position="left">
+                    <button
+                      onClick={() => handleUpdateStatus(s.key)}
+                      className="w-full text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest text-neutral-500 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                    >
+                      {s.label}
+                    </button>
+                  </Tooltip>
                 ))}
               </div>
             </div>
@@ -193,19 +269,21 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
              <div className="flex flex-col gap-6">
                 <div className="flex justify-between items-end">
                   <div className="space-y-1">
-                    <span className="text-4xl font-black text-white">65%</span>
-                    <p className="text-brand-orange text-[10px] font-black tracking-widest uppercase">Imprimiendo Capa 452/1200</p>
+                    <span className="text-4xl font-black text-white">{statusProgress[order.status as keyof typeof statusProgress] || 0}%</span>
+                    <p className="text-brand-orange text-[10px] font-black tracking-widest uppercase">{statusLabel[order.status as keyof typeof statusLabel] || 'Pendiente'}</p>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest block mb-1">Finalización Estimada</span>
-                    <span className="text-sm font-bold text-white">Mañana, 18:30 HS</span>
+                    <span className="text-sm font-bold text-white">{calcEstimatedDate(order.createdAt, order.status)}</span>
                   </div>
                 </div>
-                
+
                 <div className="h-3 w-full bg-neutral-900 rounded-full overflow-hidden border border-white/5">
-                  <div className="h-full bg-gradient-to-r from-brand-orange to-orange-400 w-[65%] shadow-[0_0_20px_rgba(255,102,0,0.4)] animate-pulse"></div>
+                  <div className="h-full bg-gradient-to-r from-brand-orange to-orange-400 transition-all duration-1000 shadow-[0_0_20px_rgba(255,102,0,0.4)]"
+                    style={{ width: `${statusProgress[order.status as keyof typeof statusProgress] || 0}%` }}>
+                  </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
                     <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest block mb-2">Impresora</span>
@@ -213,7 +291,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                       <div className="w-8 h-8 rounded-lg bg-brand-orange/20 flex items-center justify-center text-brand-orange">
                         <PrinterIcon size={16} />
                       </div>
-                      <span className="text-sm font-bold text-white">Creality K1 Max #01</span>
+                      <span className="text-sm font-bold text-white">{printers[0]?.name || 'Sin asignar'}</span>
                     </div>
                   </div>
                   <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
@@ -226,6 +304,13 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                   </div>
                 </div>
+
+                <Link
+                    href="/dashboard/ai-lab"
+                    className="mt-4 flex items-center justify-center gap-2 py-2.5 bg-brand-orange/10 border border-brand-orange/20 rounded-xl text-[10px] font-black text-brand-orange hover:bg-brand-orange/20 transition-all"
+                >
+                    <BrainCircuit size={14} /> ANALIZAR STL EN AI LAB
+                </Link>
              </div>
           </div>
 
@@ -317,9 +402,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
 
-              <button className="w-full py-3 bg-neutral-900 border border-white/5 rounded-xl text-[10px] font-black text-neutral-400 hover:bg-neutral-800 hover:text-white transition-all tracking-widest uppercase">
-                Ver Historial de Compras
-              </button>
+              <Tooltip content="Ver todas las órdenes anteriores de este cliente">
+                <button className="w-full py-3 bg-neutral-900 border border-white/5 rounded-xl text-[10px] font-black text-neutral-400 hover:bg-neutral-800 hover:text-white transition-all tracking-widest uppercase">
+                  Ver Historial de Compras
+                </button>
+              </Tooltip>
             </div>
           </div>
 
@@ -339,20 +426,20 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <div className="space-y-4">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-neutral-500 font-bold">Costo Material</span>
-                <span className="text-white font-bold">$1.250</span>
+                <span className="text-white font-bold">${calcCostMaterial().toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-neutral-500 font-bold">Energía Est.</span>
-                <span className="text-white font-bold">$420</span>
+                <span className="text-white font-bold">${calcCostEnergy().toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-neutral-500 font-bold">Mano de Obra</span>
-                <span className="text-white font-bold">$800</span>
+                <span className="text-white font-bold">${calcCostLabor().toLocaleString()}</span>
               </div>
               <div className="h-px bg-white/5 my-2"></div>
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-black text-brand-orange uppercase">Margen Neto</span>
-                <span className="text-lg font-black text-white">55.6%</span>
+                <span className="text-lg font-black text-white">{calcMargin()}%</span>
               </div>
               
               <div className="p-3 bg-brand-orange/10 rounded-xl border border-brand-orange/20 mt-4">

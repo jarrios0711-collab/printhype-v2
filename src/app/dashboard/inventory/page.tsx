@@ -55,9 +55,10 @@ export default function InventoryPage() {
         e.preventDefault()
         setIsSaving(true)
         try {
+            const userWebhook = localStorage.getItem('ph_user_webhook') || ''
             const res = await fetch('/api/inventory', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...(userWebhook ? { 'x-webhook-url': userWebhook } : {}) },
                 body: JSON.stringify(formData)
             })
             const data = await res.json()
@@ -122,15 +123,19 @@ export default function InventoryPage() {
             <div className="flex bg-neutral-950/40 border border-neutral-900 p-1.5 sm:p-2 rounded-2xl backdrop-blur-md overflow-x-auto">
                 <div className="flex gap-1">
                     {['Todos', ...Dictionary.inventory.categories].map((filter, i) => (
-                        <button key={i} className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap tap-target ${i === 0 ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'}`}>
-                            {filter}
-                        </button>
+                        <Tooltip key={i} content={i === 0 ? 'Mostrar todos los materiales' : `Filtrar por ${filter}`}>
+                            <button className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap tap-target ${i === 0 ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'}`}>
+                                {filter}
+                            </button>
+                        </Tooltip>
                     ))}
                 </div>
                 <div className="ml-auto hidden sm:flex items-center gap-4 px-4 border-l border-neutral-800">
-                    <div className="flex items-center gap-2 text-neutral-500 text-xs font-bold">
-                        <Filter size={14} /> Filtros Avanzados
-                    </div>
+                    <Tooltip content="Próximamente: filtros por marca, precio y rango de stock">
+                        <div className="flex items-center gap-2 text-neutral-500 text-xs font-bold">
+                            <Filter size={14} /> Filtros Avanzados
+                        </div>
+                    </Tooltip>
                 </div>
             </div>
 
@@ -206,9 +211,11 @@ export default function InventoryPage() {
                                             </span>
                                         </td>
                                         <td className="p-5 text-right" data-label="">
-                                            <button className="p-2 text-neutral-600 hover:text-white hover:bg-neutral-800 rounded-lg transition-all tap-target">
-                                                <MoreHorizontal size={16} />
-                                            </button>
+                                            <Tooltip content="Más opciones de este material">
+                                                <button className="p-2 text-neutral-600 hover:text-white hover:bg-neutral-800 rounded-lg transition-all tap-target">
+                                                    <MoreHorizontal size={16} />
+                                                </button>
+                                            </Tooltip>
                                         </td>
                                     </tr>
                                 )
@@ -322,7 +329,8 @@ export default function InventoryPage() {
                     </div>
 
                     <div className="pt-4 flex gap-3">
-                        <button 
+                        <Tooltip content="Descartar cambios y cerrar formulario">
+                        <button
                             type="button"
                             onClick={() => setIsAddMaterialModalOpen(false)}
                             disabled={isSaving}
@@ -330,13 +338,16 @@ export default function InventoryPage() {
                         >
                             DESCARTAR
                         </button>
-                        <button 
+                        </Tooltip>
+                        <Tooltip content="Agregar material al inventario y actualizar stock">
+                        <button
                             type="submit"
                             disabled={isSaving}
                             className="flex-1 py-3 bg-brand-cyan text-black font-black text-xs rounded-xl shadow-[0_0_20px_rgba(0,255,255,0.2)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {isSaving ? <Loader2 size={16} className="animate-spin" /> : 'SINCRONIZAR STOCK'}
                         </button>
+                        </Tooltip>
                     </div>
                 </form>
             </Modal>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
+import { triggerWebhook } from '@/lib/webhook'
 
 const StatusUpdateSchema = z.object({
   status: z.enum(['PENDING', 'PRINTING', 'SHIPPED', 'COMPLETED', 'CANCELLED']),
@@ -42,6 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const body = await req.json()
     const { status } = StatusUpdateSchema.parse(body)
+    const userWebhook = req.headers.get('x-webhook-url') || undefined
 
     const supabase = getServiceClient()
     const { id: orderId } = await params
@@ -89,6 +91,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .single()
 
     if (finalError) throw finalError
+
+    // Webhook: cambio de estado
+    const statusLabels: Record<string, string> = {
+      PENDING: 'Pendiente', PRINTING: 'En impresión', SHIPPED: 'Para enviar',
+      COMPLETED: 'Completado', CANCELLED: 'Cancelado',
+    }
+    triggerWebhook(
+      'order.status_changed',
+      'Estado de Pedido Actualizado',
+      `${u.customer_name}: ${statusLabels[status] || status}`,
+      { orderId, customerName: u.customer_name, status, totalPrice: u.total_price },
+      userWebhook
+    )
 
     return NextResponse.json({
       id: u.id,

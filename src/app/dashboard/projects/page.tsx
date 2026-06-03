@@ -249,9 +249,11 @@ export default function ProjectsPage() {
                 <input type="date" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange" />
             </div>
           </div>
-          <button type="submit" disabled={isSaving} className="w-full py-3 mt-4 bg-brand-orange text-black font-black text-xs rounded-xl transition-all hover:scale-[1.02] disabled:opacity-50">
-            {isSaving ? 'CREANDO...' : 'CREAR PROYECTO'}
-          </button>
+          <Tooltip content="Guardar nuevo proyecto en el tablero Kanban">
+            <button type="submit" disabled={isSaving} className="w-full py-3 mt-4 bg-brand-orange text-black font-black text-xs rounded-xl transition-all hover:scale-[1.02] disabled:opacity-50">
+              {isSaving ? 'CREANDO...' : 'CREAR PROYECTO'}
+            </button>
+          </Tooltip>
         </form>
       </Modal>
 
@@ -369,9 +371,11 @@ function ProjectCard({ project, isOverlay }: { project: Project, isOverlay?: boo
         <span className="text-[10px] font-black uppercase text-brand-orange tracking-wider bg-brand-orange/10 px-2 py-0.5 rounded-sm">
           {project.client ?? 'JR3D'}
         </span>
-        <button className="text-neutral-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
-          <MoreVertical size={14} />
-        </button>
+        <Tooltip content="Más opciones del proyecto">
+          <button className="text-neutral-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+            <MoreVertical size={14} />
+          </button>
+        </Tooltip>
       </div>
 
       <h3 className="font-bold text-white text-sm mb-1 leading-tight">{project.title}</h3>
