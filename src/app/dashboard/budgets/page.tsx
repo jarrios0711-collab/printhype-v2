@@ -594,9 +594,9 @@ function BudgetsPage() {
 
             {/* ============ CREATE MODAL ============ */}
             <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Nuevo Presupuesto">
-                <form className="space-y-6" onSubmit={handleCreate}>
+                <form className="space-y-2.5" onSubmit={handleCreate}>
                     {/* Mode Tabs */}
-                    <div className="flex bg-neutral-900 p-1 rounded-xl">
+                    <div className="flex bg-neutral-900 p-0.5 rounded-lg">
                         {(['MANUAL', 'STL'] as const).map((tab) => (
                             <button
                                 key={tab}
@@ -678,7 +678,7 @@ function BudgetsPage() {
                     )}
 
                     {/* Client & Job */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-neutral-500 uppercase">Cliente *</label>
                             <input
@@ -686,7 +686,7 @@ function BudgetsPage() {
                                 value={form.clientName}
                                 onChange={e => setForm({ ...form, clientName: e.target.value })}
                                 placeholder="Nombre del cliente"
-                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-orange text-white tap-target"
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white tap-target"
                             />
                         </div>
                         <div className="space-y-2">
@@ -696,7 +696,7 @@ function BudgetsPage() {
                                 value={form.jobName}
                                 onChange={e => setForm({ ...form, jobName: e.target.value })}
                                 placeholder="Nombre del trabajo"
-                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-orange text-white tap-target"
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white tap-target"
                             />
                         </div>
                     </div>
@@ -707,7 +707,7 @@ function BudgetsPage() {
                         <select
                             value={form.materialId}
                             onChange={e => setForm({ ...form, materialId: e.target.value })}
-                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-orange text-white appearance-none tap-target"
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white appearance-none tap-target"
                         >
                             <option value="">Sin material</option>
                             {materials.map(m => (
@@ -719,7 +719,7 @@ function BudgetsPage() {
                     </div>
 
                     {/* Grams & Hours */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-neutral-500 uppercase">
                                 Filamento <span className="text-neutral-600">(gramos)</span>
@@ -729,7 +729,7 @@ function BudgetsPage() {
                                 value={form.filamentGrams}
                                 onChange={e => setForm({ ...form, filamentGrams: parseFloat(e.target.value) || 0 })}
                                 placeholder="0"
-                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-orange text-white tap-target"
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white tap-target"
                             />
                         </div>
                         <div className="space-y-2">
@@ -741,13 +741,13 @@ function BudgetsPage() {
                                 value={form.printHours}
                                 onChange={e => setForm({ ...form, printHours: parseFloat(e.target.value) || 0 })}
                                 placeholder="0"
-                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-orange text-white tap-target"
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white tap-target"
                             />
                         </div>
                     </div>
 
                     {/* Energy & Labor costs per hour */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-neutral-500 uppercase">
                                 Energía <span className="text-neutral-600">($/hora)</span>
@@ -756,7 +756,7 @@ function BudgetsPage() {
                                 type="number" min="0" step="0.1"
                                 value={form.energyCost}
                                 onChange={e => setForm({ ...form, energyCost: parseFloat(e.target.value) || 0 })}
-                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-orange text-white tap-target"
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white tap-target"
                             />
                         </div>
                         <div className="space-y-2">
@@ -767,7 +767,7 @@ function BudgetsPage() {
                                 type="number" min="0" step="1"
                                 value={form.laborCost}
                                 onChange={e => setForm({ ...form, laborCost: parseFloat(e.target.value) || 0 })}
-                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-orange text-white tap-target"
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white tap-target"
                             />
                         </div>
                     </div>
@@ -843,7 +843,7 @@ function BudgetsPage() {
                             onChange={e => setForm({ ...form, notes: e.target.value })}
                             rows={2}
                             placeholder="Detalles adicionales del presupuesto..."
-                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-orange text-white resize-none tap-target"
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white resize-none tap-target"
                         />
                     </div>
 
@@ -879,9 +879,9 @@ function BudgetsPage() {
                 title="Editar Presupuesto"
             >
                 {editingBudget && (
-                    <form className="space-y-6" onSubmit={handleUpdate}>
+                    <form className="space-y-2.5" onSubmit={handleUpdate}>
                         {/* Client & Job */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-neutral-500 uppercase">Cliente</label>
                                 <input
@@ -908,7 +908,7 @@ function BudgetsPage() {
                             <select
                                 value={editForm.status}
                                 onChange={e => setEditForm({ ...editForm, status: e.target.value })}
-                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none text-white appearance-none tap-target"
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none text-white appearance-none tap-target"
                             >
                                 <option value="DRAFT">📝 DRAFT</option>
                                 <option value="SENT">📤 SENT</option>
@@ -922,7 +922,7 @@ function BudgetsPage() {
                             <select
                                 value={editForm.materialId}
                                 onChange={e => setEditForm({ ...editForm, materialId: e.target.value })}
-                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none text-white appearance-none tap-target"
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none text-white appearance-none tap-target"
                             >
                                 <option value="">Sin material</option>
                                 {materials.map(m => (
@@ -932,13 +932,13 @@ function BudgetsPage() {
                         </div>
 
                         {/* Grams & Hours */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-neutral-500 uppercase">Gramos</label>
                                 <input type="number" min="0"
                                     value={editForm.filamentGrams}
                                     onChange={e => setEditForm({ ...editForm, filamentGrams: parseFloat(e.target.value) || 0 })}
-                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none text-white tap-target"
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none text-white tap-target"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -946,19 +946,19 @@ function BudgetsPage() {
                                 <input type="number" min="0" step="0.5"
                                     value={editForm.printHours}
                                     onChange={e => setEditForm({ ...editForm, printHours: parseFloat(e.target.value) || 0 })}
-                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none text-white tap-target"
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none text-white tap-target"
                                 />
                             </div>
                         </div>
 
                         {/* Energy & Labor */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-neutral-500 uppercase">Energía $/h</label>
                                 <input type="number" min="0" step="0.1"
                                     value={editForm.energyCost}
                                     onChange={e => setEditForm({ ...editForm, energyCost: parseFloat(e.target.value) || 0 })}
-                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none text-white tap-target"
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none text-white tap-target"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -966,7 +966,7 @@ function BudgetsPage() {
                                 <input type="number" min="0" step="1"
                                     value={editForm.laborCost}
                                     onChange={e => setEditForm({ ...editForm, laborCost: parseFloat(e.target.value) || 0 })}
-                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none text-white tap-target"
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none text-white tap-target"
                                 />
                             </div>
                         </div>

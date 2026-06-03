@@ -28,7 +28,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
             ></div>
 
             {/* Content */}
-            <div className="relative w-full max-w-2xl bg-neutral-950 border border-neutral-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[85dvh] sm:max-h-[90vh] mx-auto">
+            <div className="relative w-full max-w-2xl bg-neutral-950 border border-neutral-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90dvh] sm:max-h-[95vh] mx-auto">
                 {/* iOS-style drag handle */}
                 <div className="sm:hidden flex justify-center pt-2.5 pb-0 absolute top-0 left-0 right-0 z-10 pointer-events-none">
                     <div className="w-10 h-1 rounded-full bg-neutral-700"></div>
