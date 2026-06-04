@@ -13,7 +13,7 @@ test.describe('PrintHype Dashboard Navigation and Verification', () => {
   test('should display summary dashboard metrics and activity', async ({ page }) => {
     // Validate main statistics cards
     await expect(page.locator('text=PEDIDOS HOY')).toBeVisible();
-    await expect(page.locator('text=RETORNO (ROI)')).toBeVisible();
+    await expect(page.locator('text=COMPLETADOS')).toBeVisible();
     await expect(page.locator('text=IMPRESORAS')).toBeVisible();
     await expect(page.locator('text=STOCK CRÍTICO').first()).toBeVisible();
   });

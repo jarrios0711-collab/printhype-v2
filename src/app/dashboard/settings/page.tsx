@@ -185,8 +185,8 @@ function TallerSettings() {
                 const ips = JSON.parse(saved)
                 setPrinters(prev => prev.map(p => ({
                     ...p,
-                    ip_address: ips[p.id]?.ip || '',
-                    port: ips[p.id]?.port || 7125,
+                    ip_address: ips[p.id]?.ip || p.ip_address || '',
+                    port: ips[p.id]?.port || p.port || 7125,
                 })))
             }
         } catch {}
@@ -201,10 +201,21 @@ function TallerSettings() {
         } catch {}
     }
 
-    const handleUpdatePrinterIp = (id: string) => {
+    const handleUpdatePrinterIp = async (id: string) => {
         setPrinters(printers.map(p => p.id === id ? { ...p, ip_address: editIpValue, port: editPortValue } : p))
         savePrinterIp(id, editIpValue, editPortValue)
         setEditingIp(null)
+
+        // Sync printer IP and port to the database via API
+        try {
+            await fetch('/api/printers', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, ip_address: editIpValue, port: editPortValue })
+            })
+        } catch (err) {
+            console.error('Error syncing printer IP to DB:', err)
+        }
     }
 
     const handleDeletePrinter = async (id: string) => {
