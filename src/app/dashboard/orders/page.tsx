@@ -50,7 +50,8 @@ function OrdersPage() {
         totalPrice: '',
         projectName: '',
         materialId: '',
-        weightGrams: ''
+        weightGrams: '',
+        deliveryDate: ''
     })
     const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
@@ -152,7 +153,8 @@ function OrdersPage() {
                     totalPrice: '',
                     projectName: '',
                     materialId: materials.length > 0 ? materials[0].id : '',
-                    weightGrams: ''
+                    weightGrams: '',
+                    deliveryDate: ''
                 })
                 setFormErrors({})
                 fetchOrders()
@@ -363,6 +365,24 @@ function OrdersPage() {
                                             )}>
                                                 {order.priority}
                                             </div>
+                                            {order.deliveryDate && (() => {
+                                                const delivery = new Date(order.deliveryDate + 'T00:00:00')
+                                                const today = new Date(); today.setHours(0,0,0,0)
+                                                const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
+                                                const isToday = delivery <= today
+                                                const isTomorrow = delivery.getTime() === tomorrow.getTime()
+                                                if (isToday) return (
+                                                    <div className="w-fit px-1.5 py-0.5 rounded text-[8px] font-black tracking-tighter border bg-red-500/10 text-red-500 border-red-500/20 animate-pulse">
+                                                        ⏰ HOY
+                                                    </div>
+                                                )
+                                                if (isTomorrow) return (
+                                                    <div className="w-fit px-1.5 py-0.5 rounded text-[8px] font-black tracking-tighter border bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
+                                                        ⏰ MAÑANA
+                                                    </div>
+                                                )
+                                                return null
+                                            })()}
                                         </div>
                                         <div className="text-[9px] text-neutral-600 mt-1 font-bold">
                                             {new Date(order.createdAt).toLocaleDateString()}
@@ -612,6 +632,18 @@ function OrdersPage() {
                                 <p className="text-[10px] text-red-500">{formErrors.weightGrams}</p>
                             )}
                         </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-neutral-500 uppercase">Fecha de Entrega <span className="text-neutral-600 font-normal normal-case">(opcional)</span></label>
+                        <input
+                            type="date"
+                            value={formData.deliveryDate}
+                            onChange={(e) => setFormData({...formData, deliveryDate: e.target.value})}
+                            min={new Date().toISOString().split('T')[0]}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm focus:border-brand-orange transition-all outline-none text-white tap-target"
+                        />
+                        <p className="text-[9px] text-neutral-600">Si la entrega es urgente te avisa en el listado de órdenes.</p>
                     </div>
 
                     <div className="pt-4 flex gap-3">

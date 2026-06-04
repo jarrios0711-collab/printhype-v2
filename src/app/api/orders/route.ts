@@ -11,6 +11,7 @@ const OrderSchema = z.object({
   materialId: z.string().optional().nullable(),
   weightGrams: z.string().or(z.number()).optional().transform(v => (v ? Number(v) : null)),
   priority: z.enum(['NORMAL', 'HIGH', 'URGENT']).optional().default('NORMAL'),
+  deliveryDate: z.string().optional().nullable(),
 })
 
 export async function GET() {
@@ -31,6 +32,8 @@ export async function GET() {
       totalPrice: p.total_price,
       priority: p.priority || 'NORMAL',
       createdAt: p.created_at,
+      deliveryDate: p.delivery_date || null,
+      stockDeducted: p.stock_deducted || false,
       items: [{
         projectName: p.item_reference,
         quantity: 1,
@@ -65,10 +68,39 @@ export async function POST(req: Request) {
         priority: parsed.priority,
         inventory_id: parsed.materialId || null,
         units_consumed: parsed.weightGrams,
+        delivery_date: parsed.deliveryDate || null,
       }])
       .select()
 
     if (error) throw error
+
+    // Descontar stock del inventario si hay material y peso
+    if (parsed.materialId && parsed.weightGrams && parsed.weightGrams > 0 && data && data[0]) {
+      try {
+        const { data: material, error: matError } = await supabase
+          .from('inventory_items')
+          .select('stock_units')
+          .eq('id', parsed.materialId)
+          .single()
+
+        if (!matError && material) {
+          const newStock = Math.max(0, (material.stock_units || 0) - parsed.weightGrams)
+          await supabase
+            .from('inventory_items')
+            .update({ stock_units: newStock })
+            .eq('id', parsed.materialId)
+
+          // Marcar la orden como stock descontado
+          await supabase
+            .from('order_registry')
+            .update({ stock_deducted: true })
+            .eq('id', data[0].id)
+        }
+      } catch (stockErr) {
+        // No interrumpir el flujo si el descuento falla
+        console.error('Error descontando stock:', stockErr)
+      }
+    }
 
     // Webhook: nuevo pedido
     triggerWebhook(

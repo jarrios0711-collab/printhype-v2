@@ -24,11 +24,13 @@ interface PrinterStatus {
 
 export default function DashboardPage() {
     const [userName, setUserName] = useState('admin')
-    const [stats, setStats] = useState({ orders: 0, printers: 0, lowStock: 0 })
+    const [stats, setStats] = useState({ orders: 0, printers: 0, lowStock: 0, completedRevenue: 0, totalRevenue: 0 })
     const [recentActivity, setRecentActivity] = useState<any[]>([])
+    const [lowStockItems, setLowStockItems] = useState<any[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isEmpty, setIsEmpty] = useState<{ orders: boolean; printers: boolean; inventory: boolean } | null>(null)
     const [onboardingDismissed, setOnboardingDismissed] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
 
     useEffect(() => {
         const dismissed = localStorage.getItem('ph_onboarding_dismissed')
@@ -57,7 +59,21 @@ export default function DashboardPage() {
                 const today = new Date(); today.setHours(0,0,0,0)
                 const ordersToday = orders.filter((o: any) => new Date(o.createdAt) >= today).length
 
-                setStats({ orders: ordersToday, printers: printers.length, lowStock: 0 })
+                // Stock crítico: materiales con menos de 200g
+                const lowStock = inventory.filter((m: any) => {
+                    const stock = m.stocks?.reduce((acc: number, s: any) => acc + s.weightGrams, 0) || 0
+                    return stock < 200
+                })
+
+                // Revenue: pedidos completados vs total
+                const completedRevenue = orders
+                    .filter((o: any) => o.status === 'COMPLETED')
+                    .reduce((acc: number, o: any) => acc + Number(o.totalPrice || 0), 0)
+                const totalRevenue = orders
+                    .reduce((acc: number, o: any) => acc + Number(o.totalPrice || 0), 0)
+
+                setStats({ orders: ordersToday, printers: printers.length, lowStock: lowStock.length, completedRevenue, totalRevenue })
+                setLowStockItems(lowStock.slice(0, 3))
                 setRecentActivity(orders.slice(0, 5))
                 setIsEmpty({
                     orders: orders.length === 0,
@@ -73,11 +89,15 @@ export default function DashboardPage() {
         load()
     }, [])
 
+    const roi = stats.totalRevenue > 0
+        ? (stats.completedRevenue / stats.totalRevenue * 100).toFixed(0) + '%'
+        : '—'
+
     const statCards = [
         { label: 'PEDIDOS HOY', value: String(stats.orders), sub: 'recibidos', icon: ShoppingCart, color: 'text-brand-cyan' },
-        { label: 'RETORNO (ROI)', value: '2.8x', sub: 'Promedio taller', icon: TrendingUp, color: 'text-green-500' },
+        { label: 'COMPLETADOS', value: roi, sub: 'del total facturado', icon: TrendingUp, color: 'text-green-500' },
         { label: 'IMPRESORAS', value: String(stats.printers), sub: 'registradas', icon: Activity, color: 'text-brand-orange' },
-        { label: 'STOCK CRÍTICO', value: String(stats.lowStock), sub: 'bajo mínimo', icon: Zap, color: 'text-yellow-500' },
+        { label: 'STOCK CRÍTICO', value: String(stats.lowStock), sub: stats.lowStock === 1 ? 'material bajo mínimo' : 'materiales bajo mínimo', icon: Zap, color: stats.lowStock > 0 ? 'text-red-500' : 'text-yellow-500' },
     ]
 
     return (
@@ -93,8 +113,14 @@ export default function DashboardPage() {
                     </h1>
                 </div>
                 <div className="relative w-full sm:w-auto">
-                    <Tooltip content="Buscar pedidos, clientes o proyectos">
-                        <input type="text" placeholder="Buscar..." className="w-full sm:w-56 bg-black/40 border border-neutral-800 rounded-xl px-4 py-2 pl-10 text-xs focus:outline-none focus:border-brand-orange/50 transition-all" />
+                    <Tooltip content="Buscar en la actividad reciente por cliente o proyecto">
+                        <input
+                            type="text"
+                            placeholder="Buscar..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full sm:w-56 bg-black/40 border border-neutral-800 rounded-xl px-4 py-2 pl-10 text-xs focus:outline-none focus:border-brand-orange/50 transition-all"
+                        />
                     </Tooltip>
                     <Search className="absolute left-3 top-2.5 text-neutral-600" size={14} />
                 </div>
@@ -148,7 +174,16 @@ export default function DashboardPage() {
                             ) : recentActivity.length === 0 && !isEmpty?.orders ? (
                                 <p className="text-xs text-neutral-600 font-bold uppercase tracking-widest p-10 text-center">No hay pedidos aún. ¡Cargá el primero!</p>
                             ) : recentActivity.length === 0 ? null : (
-                                recentActivity.map((order: any) => (
+                                recentActivity
+                                    .filter((order: any) => {
+                                        if (!searchQuery) return true
+                                        const q = searchQuery.toLowerCase()
+                                        return (
+                                            order.customerName?.toLowerCase().includes(q) ||
+                                            order.items?.[0]?.projectName?.toLowerCase().includes(q)
+                                        )
+                                    })
+                                    .map((order: any) => (
                                     <Link key={order.id} href={`/dashboard/orders/${order.id}`} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all cursor-pointer group">
                                         <div className="flex items-center gap-4">
                                             <div className="w-1.5 h-10 rounded-full bg-neutral-800 overflow-hidden">
@@ -191,16 +226,38 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-6 sm:p-8">
-                        <div className="flex items-center gap-2 mb-6 text-white">
-                            <AlertTriangle className="text-yellow-500" size={18} />
+                        <div className="flex items-center gap-2 mb-4 text-white">
+                            <AlertTriangle className={stats.lowStock > 0 ? 'text-red-500' : 'text-yellow-500'} size={18} />
                             <h3 className="text-xs font-black uppercase tracking-widest">STOCK CRÍTICO</h3>
                         </div>
-                        <Tooltip content="Ir a la sección de inventario">
+                        {isLoading ? (
+                            <p className="text-xs text-neutral-600 animate-pulse">Verificando stock...</p>
+                        ) : lowStockItems.length > 0 ? (
+                            <div className="space-y-2">
+                                {lowStockItems.map((m: any) => {
+                                    const stock = m.stocks?.reduce((acc: number, s: any) => acc + s.weightGrams, 0) || 0
+                                    return (
+                                        <Link key={m.id} href="/dashboard/inventory" className="flex items-center justify-between p-3 bg-red-500/5 border border-red-500/10 rounded-xl hover:bg-red-500/10 transition-all">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                                <span className="text-[10px] font-bold text-red-400 uppercase truncate max-w-[100px]">{m.name}</span>
+                                            </div>
+                                            <span className="text-[10px] font-black text-red-500">{stock.toFixed(0)}g</span>
+                                        </Link>
+                                    )
+                                })}
+                                {stats.lowStock > 3 && (
+                                    <Link href="/dashboard/inventory" className="text-[9px] font-bold text-neutral-500 hover:text-brand-orange transition-colors block text-center pt-1">
+                                        +{stats.lowStock - 3} más → IR AL INVENTARIO
+                                    </Link>
+                                )}
+                            </div>
+                        ) : (
                             <Link href="/dashboard/inventory" className="flex items-center gap-3 p-4 bg-green-500/5 border border-green-500/10 rounded-2xl hover:bg-green-500/10 transition-all">
                                 <CheckCircle2 size={16} className="text-green-500" />
-                                <span className="text-[10px] font-black text-green-500/80 uppercase">Revisá en Inventario</span>
+                                <span className="text-[10px] font-black text-green-500/80 uppercase">Todo el stock OK</span>
                             </Link>
-                        </Tooltip>
+                        )}
                     </div>
                 </div>
             </div>

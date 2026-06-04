@@ -64,10 +64,16 @@ interface Settings {
 
 const DENSITY_MAP: Record<string, number> = {
     PLA: 1.24,
+    'PLA+': 1.24,
     PETG: 1.27,
     TPU: 1.21,
     'Resina UV': 1.15,
     'ABS / ASA': 1.04,
+    'Nylon / PA': 1.14,
+    'PC (Policarbonato)': 1.20,
+    HIPS: 1.03,
+    PVA: 1.23,
+    'Carbon Fiber': 1.30,
 }
 
 const statusColors: Record<string, string> = {
@@ -84,13 +90,20 @@ const statusIcons: Record<string, string> = {
 
 // --- STL Parser ---
 
-function parseBinarySTL(buffer: ArrayBuffer): { volumeCm3: number; triangleCount: number } {
+/**
+ * Parsea un STL binario y calcula el volumen real del mesh usando
+ * signed mesh volume (suma de tetraedros). Es el método estándar
+ * para STL watertight y da valores precisos independientemente de
+ * si la pieza es sólida, hueca, o tiene geometría compleja.
+ */
+function parseBinarySTL(buffer: ArrayBuffer): { volumeCm3: number; triangleCount: number; dimensions: { x: number; y: number; z: number } } {
     const dv = new DataView(buffer)
     const triangleCount = dv.getUint32(80, true)
     if (triangleCount === 0 || triangleCount > 10000000) {
-        return { volumeCm3: 0, triangleCount: 0 }
+        return { volumeCm3: 0, triangleCount: 0, dimensions: { x: 0, y: 0, z: 0 } }
     }
 
+    let signedVolume = 0
     let minX = Infinity, maxX = -Infinity
     let minY = Infinity, maxY = -Infinity
     let minZ = Infinity, maxZ = -Infinity
@@ -98,25 +111,42 @@ function parseBinarySTL(buffer: ArrayBuffer): { volumeCm3: number; triangleCount
 
     for (let i = 0; i < triangleCount && offset + 50 <= buffer.byteLength; i++) {
         offset += 12 // skip normal vector
-        for (let v = 0; v < 3; v++) {
-            const x = dv.getFloat32(offset, true)
-            const y = dv.getFloat32(offset + 4, true)
-            const z = dv.getFloat32(offset + 8, true)
-            offset += 12
-            if (x < minX) minX = x; if (x > maxX) maxX = x
-            if (y < minY) minY = y; if (y > maxY) maxY = y
-            if (z < minZ) minZ = z; if (z > maxZ) maxZ = z
-        }
+
+        const ax = dv.getFloat32(offset, true),      ay = dv.getFloat32(offset + 4, true),      az = dv.getFloat32(offset + 8, true)
+        const bx = dv.getFloat32(offset + 12, true), by = dv.getFloat32(offset + 16, true), bz = dv.getFloat32(offset + 20, true)
+        const cx = dv.getFloat32(offset + 24, true), cy = dv.getFloat32(offset + 28, true), cz = dv.getFloat32(offset + 32, true)
+        offset += 36
         offset += 2 // skip attribute byte count
+
+        // Signed volume of tetrahedron formed by triangle and origin
+        // V = (1/6) * dot(a, cross(b, c))
+        signedVolume += (ax * (by * cz - bz * cy)
+                       + ay * (bz * cx - bx * cz)
+                       + az * (bx * cy - by * cx)) / 6.0
+
+        // Track bounding box for dimension display
+        if (ax < minX) minX = ax; if (ax > maxX) maxX = ax
+        if (ay < minY) minY = ay; if (ay > maxY) maxY = ay
+        if (az < minZ) minZ = az; if (az > maxZ) maxZ = az
+        if (bx < minX) minX = bx; if (bx > maxX) maxX = bx
+        if (by < minY) minY = by; if (by > maxY) maxY = by
+        if (bz < minZ) minZ = bz; if (bz > maxZ) maxZ = bz
+        if (cx < minX) minX = cx; if (cx > maxX) maxX = cx
+        if (cy < minY) minY = cy; if (cy > maxY) maxY = cy
+        if (cz < minZ) minZ = cz; if (cz > maxZ) maxZ = cz
     }
 
-    const dx = Math.max(maxX - minX, 0.1)
-    const dy = Math.max(maxY - minY, 0.1)
-    const dz = Math.max(maxZ - minZ, 0.1)
-    // Dimensions are in mm, convert to cm³ and apply fill factor
-    const volumeCm3 = (dx * dy * dz) / 1000 * 0.45
+    // Volume in mm³ → cm³
+    const volumeMm3 = Math.abs(signedVolume)
+    const volumeCm3 = volumeMm3 / 1000
 
-    return { volumeCm3, triangleCount }
+    const dimensions = {
+        x: Math.max(maxX - minX, 0),
+        y: Math.max(maxY - minY, 0),
+        z: Math.max(maxZ - minZ, 0),
+    }
+
+    return { volumeCm3, triangleCount, dimensions }
 }
 
 // --- Page Component ---

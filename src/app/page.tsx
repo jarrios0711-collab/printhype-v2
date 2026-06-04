@@ -34,7 +34,7 @@ export default function Home() {
                         ACCEDER AL PANEL
                     </Link>
                     <Link
-                        href="/login"
+                        href="/login?tab=signup"
                         className="px-8 py-3.5 bg-neutral-900 border border-neutral-800 text-neutral-300 font-bold text-sm rounded-xl hover:bg-neutral-800 hover:border-brand-orange/50 transition-all"
                     >
                         CREAR CUENTA

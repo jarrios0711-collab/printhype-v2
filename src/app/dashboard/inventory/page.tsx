@@ -29,6 +29,7 @@ interface Material {
     type: string
     color: string
     pricePerKg: number
+    initialWeight: number
     stocks: Array<{ weightGrams: number; isActive: boolean }>
 }
 
@@ -151,7 +152,7 @@ export default function InventoryPage() {
                 // Auto-expand the type we just added
                 setExpandedType(formData.type)
             } else {
-                alert(data.error)
+                console.error('Error al agregar material:', data.error)
             }
         } catch (err) {
             console.error('Error adding material:', err)
@@ -190,7 +191,7 @@ export default function InventoryPage() {
                 setIsEditModalOpen(false)
                 setEditingMaterial(null)
             } else {
-                alert(data.error)
+                console.error('Error al actualizar material:', data.error)
             }
         } catch (err) {
             console.error('Error updating material:', err)
@@ -235,7 +236,13 @@ export default function InventoryPage() {
         return acc + (stockKg * m.pricePerKg)
     }, 0)
 
-    const lowStockMaterials = materials.filter(m => getMaterialStock(m) < 200)
+    const lowStockMaterials = materials.filter(m => {
+        const stock = getMaterialStock(m)
+        // Umbral dinámico: 10% del peso inicial, con mínimo de 100g
+        const initialW = m.initialWeight || 1000
+        const threshold = Math.max(initialW * 0.10, 100)
+        return stock < threshold
+    })
     const lowStockAlerts = lowStockMaterials.length
 
     return (
@@ -392,7 +399,7 @@ export default function InventoryPage() {
                                                                 <span className={cn(isLow ? "text-brand-orange" : "text-white")}>
                                                                     {currentStock.toFixed(0)}g
                                                                 </span>
-                                                                <span className="text-neutral-500">1000g</span>
+                                                                <span className="text-neutral-500">{(item.initialWeight || 1000).toFixed(0)}g</span>
                                                             </div>
                                                             <div className="h-1.5 w-full bg-neutral-900 rounded-full overflow-hidden">
                                                                 <div
@@ -402,7 +409,7 @@ export default function InventoryPage() {
                                                                             ? 'bg-brand-orange shadow-[0_0_10px_rgba(255,102,0,0.5)]'
                                                                             : 'bg-brand-cyan shadow-[0_0_10px_rgba(0,255,255,0.3)]'
                                                                     )}
-                                                                    style={{ width: `${Math.min((currentStock / 1000) * 100, 100)}%` }}
+                                                                    style={{ width: `${Math.min((currentStock / (item.initialWeight || 1000)) * 100, 100)}%` }}
                                                                 />
                                                             </div>
                                                         </div>
@@ -419,7 +426,7 @@ export default function InventoryPage() {
                                                                 ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/20'
                                                                 : 'bg-green-500/10 text-green-500 border-green-500/20'
                                                         )}>
-                                                            {isLow ? '⚠ LOW' : '✅ OK'}
+                                                            {isLow ? '⚠ BAJO' : '✅ OK'}
                                                         </span>
 
                                                         {/* Options */}

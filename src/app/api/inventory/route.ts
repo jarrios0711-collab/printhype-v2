@@ -29,6 +29,7 @@ export async function GET() {
       type: m.category,
       color: m.color,
       pricePerKg: m.unit_price,
+      initialWeight: m.initial_weight || m.stock_units || 1000,
       stocks: [{ weightGrams: m.stock_units, isActive: true }],
     }))
 
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
         name: parsed.name,
         category: parsed.type,
         stock_units: parsed.initialWeight,
+        initial_weight: parsed.initialWeight,
         unit_price: parsed.pricePerKg,
         brand: parsed.brand,
         color: parsed.color,

@@ -39,6 +39,7 @@ export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState<Tab>('taller')
     const [settings, setSettings] = useState<any>(null)
     const [isSaving, setIsSaving] = useState(false)
+    const [isSaved, setIsSaved] = useState(false)
 
     useEffect(() => {
         fetch('/api/settings')
@@ -54,7 +55,8 @@ export default function SettingsPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(settings)
             })
-            alert('Configuración Actualizada: Datos guardados en Supabase.')
+            setIsSaved(true)
+            setTimeout(() => setIsSaved(false), 2500)
         } catch (err) {
             console.error('Error saving settings:', err)
         } finally {
@@ -81,8 +83,8 @@ export default function SettingsPage() {
                         disabled={isSaving}
                         className="flex items-center gap-2 px-6 py-2.5 bg-brand-orange text-black rounded-xl text-sm font-black transition-all hover:scale-105 active:scale-95 shadow-lg shadow-brand-orange/20 disabled:opacity-50 tap-target"
                     >
-                        {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />}
-                        {isSaving ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}
+                        {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : isSaved ? '✓' : <Save size={16} />}
+                        {isSaving ? 'GUARDANDO...' : isSaved ? 'GUARDADO ✓' : 'GUARDAR CAMBIOS'}
                     </button>
                 </Tooltip>
             </div>
