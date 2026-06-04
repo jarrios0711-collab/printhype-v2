@@ -41,6 +41,7 @@ interface Budget {
     profitAmount: number
     marginPercent: number
     notes: string
+    currency: string
     createdAt: string
 }
 
@@ -184,6 +185,7 @@ function BudgetsPage() {
         laborCost: 0,
         marginPercent: 150,
         notes: '',
+        currency: 'ARS',
     }
     const [form, setForm] = useState(initialForm)
 
@@ -199,6 +201,7 @@ function BudgetsPage() {
         laborCost: 0,
         marginPercent: 150,
         notes: '',
+        currency: 'ARS',
     })
 
     // --- Data fetching ---
@@ -237,6 +240,7 @@ function BudgetsPage() {
                     energyCost: (data.kwhPrice || 120.50) * 0.5,
                     laborCost: data.laborHourPrice || 800,
                     marginPercent: (data.profitMargin || 1.5) * 100,
+                    currency: data.currency || 'ARS',
                 }))
             }
         } catch (err) {
@@ -351,6 +355,7 @@ function BudgetsPage() {
             energyCost: settings ? settings.kwhPrice * 0.5 : 60.25,
             laborCost: settings?.laborHourPrice || 800,
             marginPercent: settings ? settings.profitMargin * 100 : 150,
+            currency: settings?.currency || 'ARS',
         })
         setStlFile(null)
         setStlResult(null)
@@ -383,6 +388,7 @@ function BudgetsPage() {
                     profitAmount: calculations.profitAmount,
                     marginPercent: calculations.marginPercent,
                     notes: form.notes,
+                    currency: form.currency,
                 }),
             })
             const data = await res.json()
@@ -417,6 +423,7 @@ function BudgetsPage() {
             laborCost: budget.laborCost,
             marginPercent: marginPct,
             notes: budget.notes,
+            currency: budget.currency || 'ARS',
         })
         setConfirmDelete(null)
         setShowEditModal(true)
@@ -446,6 +453,7 @@ function BudgetsPage() {
                     profitAmount: editCalculations.profitAmount,
                     marginPercent: editCalculations.marginPercent,
                     notes: editForm.notes,
+                    currency: editForm.currency,
                 }),
             })
             const data = await res.json()
@@ -498,10 +506,11 @@ function BudgetsPage() {
 
     // --- Format helpers ---
 
-    const fmt = (n: number) => {
-        if (n === 0) return '$0'
-        if (Math.abs(n) < 1) return `$${n.toFixed(2)}`
-        return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+    const fmt = (n: number, curr?: string) => {
+        const symbol = curr === 'USD' ? 'US$' : '$'
+        if (n === 0) return `${symbol}0`
+        if (Math.abs(n) < 1) return `${symbol}${n.toFixed(2)}`
+        return `${symbol}${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
     }
 
     const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`
@@ -590,10 +599,10 @@ function BudgetsPage() {
                                         <span className="text-xs font-bold text-neutral-300">{b.jobName}</span>
                                     </td>
                                     <td className="p-5 font-black text-sm text-neutral-400" data-label="Costo">
-                                        {fmt(b.totalCost)}
+                                        {fmt(b.totalCost, b.currency)}
                                     </td>
                                     <td className="p-5 font-black text-sm text-brand-orange" data-label="Precio">
-                                        {fmt(b.salePrice)}
+                                        {fmt(b.salePrice, b.currency)}
                                     </td>
                                     <td className="p-5" data-label="Margen">
                                         <span className={cn(
@@ -718,7 +727,7 @@ function BudgetsPage() {
                     )}
 
                     {/* Client & Job */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-neutral-500 uppercase">Cliente *</label>
                             <input
@@ -738,6 +747,17 @@ function BudgetsPage() {
                                 placeholder="Nombre del trabajo"
                                 className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white tap-target"
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-neutral-500 uppercase">Moneda</label>
+                            <select
+                                value={form.currency}
+                                onChange={e => setForm({ ...form, currency: e.target.value })}
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white appearance-none tap-target"
+                            >
+                                <option value="ARS">ARS ($)</option>
+                                <option value="USD">USD (US$)</option>
+                            </select>
                         </div>
                     </div>
 
@@ -837,30 +857,30 @@ function BudgetsPage() {
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <p className="text-[8px] text-neutral-600 font-black uppercase">Material</p>
-                                <p className="text-sm font-black text-white">{fmt(calculations.materialCost)}</p>
+                                <p className="text-sm font-black text-white">{fmt(calculations.materialCost, form.currency)}</p>
                             </div>
                             <div>
                                 <p className="text-[8px] text-neutral-600 font-black uppercase">Energía</p>
-                                <p className="text-sm font-black text-white">{fmt(calculations.energyCost)}</p>
+                                <p className="text-sm font-black text-white">{fmt(calculations.energyCost, form.currency)}</p>
                             </div>
                             <div>
                                 <p className="text-[8px] text-neutral-600 font-black uppercase">Mano de Obra</p>
-                                <p className="text-sm font-black text-white">{fmt(calculations.laborCost)}</p>
+                                <p className="text-sm font-black text-white">{fmt(calculations.laborCost, form.currency)}</p>
                             </div>
                             <div>
                                 <p className="text-[8px] text-neutral-600 font-black uppercase">Costo Total</p>
-                                <p className="text-sm font-black text-neutral-400">{fmt(calculations.totalCost)}</p>
+                                <p className="text-sm font-black text-neutral-400">{fmt(calculations.totalCost, form.currency)}</p>
                             </div>
                         </div>
                         <div className="h-px bg-white/5"></div>
                         <div className="grid grid-cols-3 gap-3 text-center">
                             <div>
                                 <p className="text-[8px] text-brand-orange font-black uppercase">Precio Venta</p>
-                                <p className="text-lg font-black text-brand-orange">{fmt(calculations.salePrice)}</p>
+                                <p className="text-lg font-black text-brand-orange">{fmt(calculations.salePrice, form.currency)}</p>
                             </div>
                             <div>
                                 <p className="text-[8px] text-green-500 font-black uppercase">Ganancia</p>
-                                <p className="text-lg font-black text-green-500">{fmt(calculations.profitAmount)}</p>
+                                <p className="text-lg font-black text-green-500">{fmt(calculations.profitAmount, form.currency)}</p>
                             </div>
                             <div>
                                 <p className="text-[8px] text-brand-cyan font-black uppercase">Margen</p>
@@ -930,7 +950,7 @@ function BudgetsPage() {
                 {editingBudget && (
                     <form className="space-y-2.5" onSubmit={handleUpdate}>
                         {/* Client & Job */}
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-neutral-500 uppercase">Cliente</label>
                                 <input
@@ -948,6 +968,17 @@ function BudgetsPage() {
                                     onChange={e => setEditForm({ ...editForm, jobName: e.target.value })}
                                     className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-orange text-white tap-target"
                                 />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-neutral-500 uppercase">Moneda</label>
+                                <select
+                                    value={editForm.currency}
+                                    onChange={e => setEditForm({ ...editForm, currency: e.target.value })}
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-orange text-white appearance-none tap-target"
+                                >
+                                    <option value="ARS">ARS ($)</option>
+                                    <option value="USD">USD (US$)</option>
+                                </select>
                             </div>
                         </div>
 
@@ -1039,11 +1070,11 @@ function BudgetsPage() {
                             <div className="grid grid-cols-3 gap-3 text-center">
                                 <div>
                                     <p className="text-[8px] text-neutral-600 font-black uppercase">Costo</p>
-                                    <p className="text-base font-black text-neutral-400">{fmt(editCalculations.totalCost)}</p>
+                                    <p className="text-base font-black text-neutral-400">{fmt(editCalculations.totalCost, editForm.currency)}</p>
                                 </div>
                                 <div>
                                     <p className="text-[8px] text-brand-orange font-black uppercase">Venta</p>
-                                    <p className="text-base font-black text-brand-orange">{fmt(editCalculations.salePrice)}</p>
+                                    <p className="text-base font-black text-brand-orange">{fmt(editCalculations.salePrice, editForm.currency)}</p>
                                 </div>
                                 <div>
                                     <p className="text-[8px] text-green-500 font-black uppercase">Margen</p>

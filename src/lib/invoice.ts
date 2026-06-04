@@ -49,6 +49,7 @@ export function generateInvoiceHtml(order: OrderForInvoice, settings?: SettingsF
         ? order.items
         : [{ id: 'item-1', projectName: 'Pedido', quantity: 1, price: order.totalPrice }]
     const subtotal = items.reduce((sum, it) => sum + it.price * it.quantity, 0)
+    const symbol = settings?.currency === 'USD' ? 'US$' : '$'
 
     return `<!DOCTYPE html>
 <html lang="es">
@@ -134,8 +135,8 @@ export function generateInvoiceHtml(order: OrderForInvoice, settings?: SettingsF
         <tr>
           <td class="item-name">${item.projectName}</td>
           <td class="text-center">${item.quantity}</td>
-          <td class="text-right">$${item.price.toLocaleString()}</td>
-          <td class="text-right">$${(item.price * item.quantity).toLocaleString()}</td>
+          <td class="text-right">${symbol}${item.price.toLocaleString()}</td>
+          <td class="text-right">${symbol}${(item.price * item.quantity).toLocaleString()}</td>
         </tr>
       `).join('')}
     </tbody>
@@ -145,11 +146,11 @@ export function generateInvoiceHtml(order: OrderForInvoice, settings?: SettingsF
     <div class="row">
       <div class="col">
         <div class="label">Subtotal</div>
-        <div class="value">$${subtotal.toLocaleString()}</div>
+        <div class="value">${symbol}${subtotal.toLocaleString()}</div>
       </div>
       <div class="col">
         <div class="label">Total</div>
-        <div class="value total-value">$${order.totalPrice.toLocaleString()}</div>
+        <div class="value total-value">${symbol}${order.totalPrice.toLocaleString()}</div>
       </div>
     </div>
   </div>
@@ -159,19 +160,19 @@ export function generateInvoiceHtml(order: OrderForInvoice, settings?: SettingsF
     <div class="grid">
       <div class="item">
         <div class="label">Material</div>
-        <div class="value">$${costs.material.toLocaleString()}</div>
+        <div class="value">${symbol}${costs.material.toLocaleString()}</div>
       </div>
       <div class="item">
         <div class="label">Energía</div>
-        <div class="value">$${costs.energy.toLocaleString()}</div>
+        <div class="value">${symbol}${costs.energy.toLocaleString()}</div>
       </div>
       <div class="item">
         <div class="label">Mano de Obra</div>
-        <div class="value">$${costs.labor.toLocaleString()}</div>
+        <div class="value">${symbol}${costs.labor.toLocaleString()}</div>
       </div>
       <div class="item">
         <div class="label">Costo Total</div>
-        <div class="value">$${costs.totalCost.toLocaleString()}</div>
+        <div class="value">${symbol}${costs.totalCost.toLocaleString()}</div>
       </div>
     </div>
     <div class="margin">

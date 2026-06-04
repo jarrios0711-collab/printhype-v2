@@ -72,12 +72,9 @@ export function exportToCSV<T extends Record<string, any>>(
   URL.revokeObjectURL(url)
 }
 
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 0
-  }).format(value)
+export function formatCurrency(value: number, currency: string = 'ARS'): string {
+  const symbol = currency === 'USD' ? 'US$' : '$'
+  return `${symbol}${Number(value).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 }
 
 export function formatDate(date: string | Date): string {

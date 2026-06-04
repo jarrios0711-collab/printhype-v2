@@ -42,6 +42,7 @@ function OrdersPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [settings, setSettings] = useState<any>(null)
 
     const [formData, setFormData] = useState({
         customerName: '',
@@ -113,9 +114,20 @@ function OrdersPage() {
         }
     }
 
+    const fetchSettings = async () => {
+        try {
+            const res = await fetch('/api/settings')
+            const data = await res.json()
+            if (!data.error) setSettings(data)
+        } catch (err) {
+            console.error('Error fetching settings:', err)
+        }
+    }
+
     useEffect(() => {
         fetchOrders()
         fetchMaterials()
+        fetchSettings()
     }, [])
 
     const handleCreateOrder = async (e: React.FormEvent) => {
@@ -429,7 +441,7 @@ function OrdersPage() {
                                         </div>
                                     </td>
                                     <td className="p-5 font-black text-white text-sm" data-label="Total">
-                                        {formatCurrency(order.totalPrice)}
+                                        {formatCurrency(order.totalPrice, settings?.currency)}
                                     </td>
                                     <td className="p-5 text-right" data-label="">
                                         <div className="flex items-center justify-end gap-2">
@@ -442,7 +454,8 @@ function OrdersPage() {
                                                             if (!c.startsWith('549') && !c.startsWith('54') && c.length === 10) c = '549' + c
                                                             if (c.startsWith('54') && !c.startsWith('549')) c = '549' + c.substring(2)
                                                             const invoiceUrl = window.location.origin + '/dashboard/orders/' + order.id
-                                                            const msg = '\U0001f9fe *FACTURA PrintHype - JR3D*\n\nCliente: ' + order.customerName + '\nTotal: $' + order.totalPrice.toLocaleString() + '\nEstado: ' + order.status + '\n\nPod\u00e9s ver tu factura ac\u00e1:\n' + invoiceUrl
+                                                            const symbol = settings?.currency === 'USD' ? 'US$' : '$'
+                                                            const msg = '🧾 *FACTURA PrintHype - JR3D*\n\nCliente: ' + order.customerName + '\nTotal: ' + symbol + order.totalPrice.toLocaleString() + '\nEstado: ' + order.status + '\n\nPodés ver tu factura acá:\n' + invoiceUrl
                                                             return 'https://wa.me/' + c + '?text=' + encodeURIComponent(msg)
                                                         })()}
                                                         target="_blank"
@@ -563,7 +576,7 @@ function OrdersPage() {
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-neutral-500 uppercase">Presupuesto ($) *</label>
+                            <label className="text-[10px] font-black text-neutral-500 uppercase">Presupuesto ({settings?.currency === 'USD' ? 'US$' : '$'}) *</label>
                             <input
                                 type="number"
                                 value={formData.totalPrice}

@@ -19,6 +19,7 @@ const UpdateSchema = z.object({
   profitAmount: z.number().optional(),
   marginPercent: z.number().optional(),
   notes: z.string().optional(),
+  currency: z.string().optional(),
 })
 
 export async function PATCH(
@@ -52,9 +53,10 @@ export async function PATCH(
     if (parsed.profitAmount !== undefined) updateData.profit_amount = parsed.profitAmount
     if (parsed.marginPercent !== undefined) updateData.margin_percent = parsed.marginPercent
     if (parsed.notes !== undefined) updateData.notes = parsed.notes
+    if (parsed.currency !== undefined) updateData.currency = parsed.currency
 
     const admin = getServiceClient()
-    const { data, error } = await admin
+    let result = await admin
       .from('budgets')
       .update(updateData)
       .eq('id', id)
@@ -62,10 +64,23 @@ export async function PATCH(
       .select()
       .single()
 
-    if (error) throw error
-    if (!data) {
+    if (result.error && result.error.code === '42703') { // Fallback if currency column doesn't exist
+      const safeUpdates = { ...updateData }
+      delete safeUpdates.currency
+      result = await admin
+        .from('budgets')
+        .update(safeUpdates)
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single()
+    }
+
+    if (result.error) throw result.error
+    if (!result.data) {
       return NextResponse.json({ error: 'Presupuesto no encontrado' }, { status: 404 })
     }
+    const data = result.data
 
     return NextResponse.json({
       id: data.id,
@@ -84,6 +99,7 @@ export async function PATCH(
       profitAmount: Number(data.profit_amount),
       marginPercent: Number(data.margin_percent),
       notes: data.notes || '',
+      currency: data.currency || 'ARS',
       createdAt: data.created_at,
     })
   } catch (error: any) {

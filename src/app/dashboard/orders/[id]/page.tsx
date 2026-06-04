@@ -143,6 +143,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     return ((order.totalPrice - calcTotalCost()) / order.totalPrice * 100).toFixed(1)
   }
 
+  const fmt = (n: number) => {
+    const curr = settings?.currency || 'ARS'
+    const symbol = curr === 'USD' ? 'US$' : '$'
+    return `${symbol}${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+  }
+
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center p-20 space-y-4">
       <Loader2 className="h-8 w-8 text-brand-orange animate-spin" />
@@ -222,7 +228,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     if (!c.startsWith('549') && !c.startsWith('54') && c.length === 10) c = '549' + c
                     if (c.startsWith('54') && !c.startsWith('549')) c = '549' + c.substring(2)
                     const invoiceUrl = window.location.origin + '/dashboard/orders/' + order.id
-                    const msg = '\U0001f9fe *FACTURA PrintHype - JR3D*\n\nCliente: ' + order.customerName + '\nTotal: $' + order.totalPrice.toLocaleString() + '\nEstado: ' + order.status + '\n\nPod\u00e9s ver y descargar tu factura ac\u00e1:\n' + invoiceUrl + '\n\n\u00a1Gracias por confiar en JR3D! \U0001f680'
+                    const symbol = settings?.currency === 'USD' ? 'US$' : '$'
+                    const msg = '🧾 *FACTURA PrintHype - JR3D*\n\nCliente: ' + order.customerName + '\nTotal: ' + symbol + order.totalPrice.toLocaleString() + '\nEstado: ' + order.status + '\n\nPodés ver y descargar tu factura acá:\n' + invoiceUrl + '\n\n¡Gracias por confiar en JR3D! 🚀'
                     return 'https://wa.me/' + c + '?text=' + encodeURIComponent(msg)
                   })()}
                   target="_blank"
@@ -367,10 +374,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                       {item.quantity}
                     </td>
                     <td className="p-5 text-right font-bold text-neutral-400 text-sm">
-                      ${item.price.toLocaleString()}
+                      {fmt(item.price)}
                     </td>
                     <td className="p-5 text-right font-black text-white text-sm">
-                      ${(item.price * item.quantity).toLocaleString()}
+                      {fmt(item.price * item.quantity)}
                     </td>
                   </tr>
                 ))}
@@ -378,7 +385,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <tfoot>
                 <tr className="bg-white/5 font-black">
                   <td colSpan={3} className="p-6 text-right text-xs uppercase text-neutral-500 tracking-widest">Total del Pedido</td>
-                  <td className="p-6 text-right text-2xl text-brand-orange">${order.totalPrice.toLocaleString()}</td>
+                  <td className="p-6 text-right text-2xl text-brand-orange">{fmt(order.totalPrice)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -447,15 +454,15 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <div className="space-y-4">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-neutral-500 font-bold">Costo Material</span>
-                <span className="text-white font-bold">${calcCostMaterial().toLocaleString()}</span>
+                <span className="text-white font-bold">{fmt(calcCostMaterial())}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-neutral-500 font-bold">Energía Est.</span>
-                <span className="text-white font-bold">${calcCostEnergy().toLocaleString()}</span>
+                <span className="text-white font-bold">{fmt(calcCostEnergy())}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-neutral-500 font-bold">Mano de Obra</span>
-                <span className="text-white font-bold">${calcCostLabor().toLocaleString()}</span>
+                <span className="text-white font-bold">{fmt(calcCostLabor())}</span>
               </div>
               <div className="h-px bg-white/5 my-2"></div>
               <div className="flex justify-between items-center">

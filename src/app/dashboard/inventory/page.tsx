@@ -51,6 +51,7 @@ export default function InventoryPage() {
     const [expandedType, setExpandedType] = useState<string | null>(null)
     const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+    const [settings, setSettings] = useState<any>(null)
 
     const [formData, setFormData] = useState({
         name: '',
@@ -83,9 +84,26 @@ export default function InventoryPage() {
         }
     }
 
+    const fetchSettings = async () => {
+        try {
+            const res = await fetch('/api/settings')
+            const data = await res.json()
+            if (!data.error) setSettings(data)
+        } catch (err) {
+            console.error('Error fetching settings:', err)
+        }
+    }
+
     useEffect(() => {
         fetchInventory()
+        fetchSettings()
     }, [])
+
+    const fmt = (n: number) => {
+        const curr = settings?.currency || 'ARS'
+        const symbol = curr === 'USD' ? 'US$' : '$'
+        return `${symbol}${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+    }
 
     // Group materials by type
     const grouped = useMemo(() => {
@@ -353,7 +371,7 @@ export default function InventoryPage() {
                                                 )}
                                             </div>
                                             <p className="text-[10px] sm:text-xs text-neutral-500 mt-0.5 font-medium">
-                                                Stock total: {totalStock.toFixed(0)}g · Desde ${Math.min(...items.map(m => m.pricePerKg)).toFixed(0)}/kg
+                                                Stock total: {totalStock.toFixed(0)}g · Desde {fmt(Math.min(...items.map(m => m.pricePerKg)))}/kg
                                             </p>
                                         </div>
                                     </div>
@@ -416,7 +434,7 @@ export default function InventoryPage() {
 
                                                         {/* Price */}
                                                         <span className="text-xs font-black text-green-500 w-20 sm:w-24 text-right">
-                                                            ${item.pricePerKg.toFixed(2)}
+                                                            {fmt(item.pricePerKg)}
                                                         </span>
 
                                                         {/* Status */}
@@ -454,7 +472,7 @@ export default function InventoryPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="p-6 bg-brand-orange/5 border border-brand-orange/20 rounded-2xl backdrop-blur-md">
                     <div className="text-[10px] font-black text-brand-orange uppercase tracking-widest mb-1">Valor Total Inventario</div>
-                    <div className="text-2xl font-black text-white">${totalInventoryValue.toFixed(2)}</div>
+                    <div className="text-2xl font-black text-white">{fmt(totalInventoryValue)}</div>
                 </div>
                 <div className="p-6 bg-brand-cyan/5 border border-brand-cyan/20 rounded-2xl backdrop-blur-md">
                     <div className="text-[10px] font-black text-brand-cyan uppercase tracking-widest mb-1">Alertas de Reposición</div>

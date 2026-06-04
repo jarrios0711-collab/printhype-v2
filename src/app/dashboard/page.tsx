@@ -31,6 +31,7 @@ export default function DashboardPage() {
     const [isEmpty, setIsEmpty] = useState<{ orders: boolean; printers: boolean; inventory: boolean } | null>(null)
     const [onboardingDismissed, setOnboardingDismissed] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
+    const [settings, setSettings] = useState<any>(null)
 
     useEffect(() => {
         const dismissed = localStorage.getItem('ph_onboarding_dismissed')
@@ -46,15 +47,18 @@ export default function DashboardPage() {
                     setUserName(user.email.split('@')[0])
                 }
 
-                const [ordersRes, printersRes, inventoryRes] = await Promise.allSettled([
+                const [ordersRes, printersRes, inventoryRes, settingsRes] = await Promise.allSettled([
                     fetch('/api/orders').then(r => r.json()),
                     fetch('/api/printers').then(r => r.json()),
                     fetch('/api/inventory').then(r => r.json()),
+                    fetch('/api/settings').then(r => r.json()),
                 ])
 
                 const orders = ordersRes.status === 'fulfilled' && !ordersRes.value.error ? ordersRes.value : []
                 const printers = printersRes.status === 'fulfilled' && !printersRes.value.error ? printersRes.value : []
                 const inventory = inventoryRes.status === 'fulfilled' && !inventoryRes.value.error ? inventoryRes.value : []
+                const settingsData = settingsRes.status === 'fulfilled' && !settingsRes.value.error ? settingsRes.value : null
+                setSettings(settingsData)
 
                 const today = new Date(); today.setHours(0,0,0,0)
                 const ordersToday = orders.filter((o: any) => new Date(o.createdAt) >= today).length
@@ -88,6 +92,12 @@ export default function DashboardPage() {
         }
         load()
     }, [])
+
+    const fmt = (n: number) => {
+        const curr = settings?.currency || 'ARS'
+        const symbol = curr === 'USD' ? 'US$' : '$'
+        return `${symbol}${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+    }
 
     const roi = stats.totalRevenue > 0
         ? (stats.completedRevenue / stats.totalRevenue * 100).toFixed(0) + '%'
@@ -194,7 +204,7 @@ export default function DashboardPage() {
                                                     {order.customerName}: {order.items?.[0]?.projectName || 'Pedido'}
                                                 </div>
                                                 <div className="text-[10px] text-neutral-500 font-mono mt-0.5 uppercase">
-                                                    {new Date(order.createdAt).toLocaleDateString()} · ${Number(order.totalPrice).toLocaleString()}
+                                                    {new Date(order.createdAt).toLocaleDateString()} · {fmt(Number(order.totalPrice))}
                                                 </div>
                                             </div>
                                         </div>

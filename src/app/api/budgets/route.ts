@@ -19,6 +19,7 @@ const BudgetSchema = z.object({
   profitAmount: z.number().optional().default(0),
   marginPercent: z.number().optional().default(0),
   notes: z.string().optional().default(''),
+  currency: z.string().optional().default('ARS'),
 })
 
 export async function GET() {
@@ -55,6 +56,7 @@ export async function GET() {
       profitAmount: Number(b.profit_amount),
       marginPercent: Number(b.margin_percent),
       notes: b.notes || '',
+      currency: b.currency || 'ARS',
       createdAt: b.created_at,
     })))
   } catch (error) {
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
     const parsed = BudgetSchema.parse(body)
 
     const admin = getServiceClient()
-    const { data, error } = await admin
+    let result = await admin
       .from('budgets')
       .insert([{
         user_id: user.id,
@@ -94,11 +96,38 @@ export async function POST(req: Request) {
         profit_amount: parsed.profitAmount,
         margin_percent: parsed.marginPercent,
         notes: parsed.notes,
+        currency: parsed.currency,
       }])
       .select()
       .single()
 
-    if (error) throw error
+    if (result.error && result.error.code === '42703') { // Fallback if currency column doesn't exist
+      result = await admin
+        .from('budgets')
+        .insert([{
+          user_id: user.id,
+          client_name: parsed.clientName,
+          job_name: parsed.jobName,
+          status: parsed.status,
+          material_id: parsed.materialId,
+          filament_grams: parsed.filamentGrams,
+          print_hours: parsed.printHours,
+          energy_cost: parsed.energyCost,
+          labor_cost: parsed.laborCost,
+          material_cost: parsed.materialCost,
+          total_cost: parsed.totalCost,
+          sale_price: parsed.salePrice,
+          profit_percent: parsed.profitPercent,
+          profit_amount: parsed.profitAmount,
+          margin_percent: parsed.marginPercent,
+          notes: parsed.notes,
+        }])
+        .select()
+        .single()
+    }
+
+    if (result.error) throw result.error
+    const data = result.data
 
     return NextResponse.json({
       id: data.id,
@@ -117,6 +146,7 @@ export async function POST(req: Request) {
       profitAmount: Number(data.profit_amount),
       marginPercent: Number(data.margin_percent),
       notes: data.notes || '',
+      currency: data.currency || 'ARS',
       createdAt: data.created_at,
     })
   } catch (error: any) {
