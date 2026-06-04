@@ -42,14 +42,19 @@ export async function signup(formData: FormData) {
     redirect('/login?error=La contraseña debe tener al menos 6 caracteres')
   }
 
-  const { error } = await supabase.auth.signUp({ email, password })
+  const { data, error } = await supabase.auth.signUp({ email, password })
 
   if (error) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+
+  if (data?.session) {
+    redirect('/dashboard')
+  } else {
+    redirect('/login?message=Cuenta creada. Por favor, revisá tu correo electrónico para confirmar tu cuenta antes de ingresar.')
+  }
 }
 
 export async function logout() {
