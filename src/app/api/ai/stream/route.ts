@@ -13,11 +13,20 @@ const PROVIDER_META = {
   openrouter: { name: 'OpenRouter', defaultModel: 'google/gemini-2.0-flash-001', defaultUrl: 'https://openrouter.ai/api/v1' },
 }
 
-function buildSystemPrompt(context: string, fileData: any): string {
-  let sp = `Eres un asistente experto en impresión 3D para el ecosistema JR3D. Tu objetivo es ayudar al usuario a optimizar su taller y maximizar el ROI.`
+function buildSystemPrompt(context: string, fileData: any, dbContext: string): string {
+  let sp = `Eres un asistente experto en impresión 3D para el ecosistema JR3D. Tu objetivo es ayudar al usuario a optimizar su taller y maximizar el ROI.
+Tienes VISIBILIDAD TOTAL de los datos del taller en tiempo real (pedidos, inventario de filamentos, presupuestos, impresoras).
+
+${dbContext}
+
+REGLAS DE NEGOCIO JR3D:
+1. Peso = Volumen * Densidad (PLA: 1.24, PETG: 1.27).
+2. Costo Material = (Peso / 1000) * PrecioKg.
+3. Margen Sugerido: 2.5x - 3.0x del costo base.
+4. Si te preguntan sobre pedidos, stock o impresoras, responde con los datos reales mostrados arriba. ¡Sé directo y resolutivo, no preguntes información que ya tienes!`
 
   if (context === 'Calculador de Costos') {
-    sp += `\n\nESTÁS EN MODO CALCULADOR TÉCNICO.\n\nSi el usuario proporciona datos de un archivo STL, analízalos rigurosamente:\n- Dimensiones (en mm): Interpreta X, Y, Z.\n- Volumen (en cm3): Úsalo para estimar el peso.\n\nREGLAS DE NEGOCIO JR3D:\n1. Peso = Volumen * Densidad (PLA: 1.24, PETG: 1.27).\n2. Costo Material = (Peso / 1000) * PrecioKg.\n3. Margen Sugerido: 2.5x - 3.0x del costo base.\n4. Tiempo Est.: Un volumen de 100cm3 suele tardar 4-6 horas en una K1 Max (aprox).\n\nResponde siempre con una tabla de costos y una recomendación de precio final.`
+    sp += `\n\nESTÁS EN MODO CALCULADOR TÉCNICO.\n\nSi el usuario proporciona datos de un archivo STL, analízalos rigurosamente:\n- Dimensiones (en mm): Interpreta X, Y, Z.\n- Volumen (en cm3): Úsalo para estimar el peso.\n\nResponde siempre con una tabla de costos y una recomendación de precio final.`
     if (fileData) {
       sp += `\n\nMETADATOS DEL ARCHIVO ACTUAL:\n- Nombre: ${fileData.name}\n- Dimensiones: ${fileData.dimensions.x.toFixed(2)}x${fileData.dimensions.y.toFixed(2)}x${fileData.dimensions.z.toFixed(2)} mm\n- Volumen: ${fileData.volumeCm3.toFixed(2)} cm³\n- Peso Est. (PLA): ${fileData.weightGrams.pla.toFixed(2)}g`
     }
@@ -163,9 +172,45 @@ export async function POST(req: NextRequest) {
     const model = config?.model || meta.defaultModel
     const baseUrl = config?.base_url || meta.defaultUrl
 
+    // --- Consultar bases de datos para inyectar en prompt ---
+    let dbContext = ''
+    try {
+      const [ordersRes, inventoryRes, printersRes, budgetsRes] = await Promise.all([
+        admin.from('order_registry').select('*').order('created_at', { ascending: false }).limit(20),
+        admin.from('inventory_items').select('*'),
+        admin.from('printers').select('*'),
+        admin.from('budgets').select('*').limit(20)
+      ])
+
+      const orders = ordersRes.data || []
+      const materials = inventoryRes.data || []
+      const printers = printersRes.data || []
+      const budgets = budgetsRes.data || []
+
+      const activeOrders = orders.filter(o => o.status !== 'COMPLETED')
+      const lowStock = materials.filter(m => (m.stock_units || 0) < 200)
+
+      dbContext = `[DATOS OPERATIVOS DEL TALLER EN TIEMPO REAL]
+- Pedidos Activos (${activeOrders.length}):
+${activeOrders.map(o => `  * ID: ${o.id.slice(0, 8)}, Cliente: ${o.customer_name}, Proyecto: ${o.item_reference}, Estado: ${o.status || 'PENDING'}, Prioridad: ${o.priority}, Precio: $${o.total_price}`).join('\n')}
+
+- Stock de Materiales (${materials.length} total, ${lowStock.length} bajos):
+${materials.map(m => `  * Material: ${m.name} (${m.brand || 'Genérico'}), Stock: ${m.stock_units || 0}g, Categoría: ${m.category || 'PLA'}, Color: ${m.color}`).join('\n')}
+
+- Impresoras Registradas (${printers.length}):
+${printers.map(p => `  * Impresora: ${p.name}, IP: ${p.ip_address || 'Sin IP'}`).join('\n')}
+
+- Presupuestos Recientes (${budgets.length}):
+${budgets.map(b => `  * Cliente: ${b.client_name}, Trabajo: ${b.job_name}, Estado: ${b.status}, Precio: $${b.sale_price}`).join('\n')}
+`
+    } catch (dbErr) {
+      console.error('Error fetching dynamic database context for AI:', dbErr)
+      dbContext = '[Advertencia: No se pudo cargar el contexto dinámico de la base de datos]'
+    }
+
     console.log('[ai/stream] provider=%s model=%s baseUrl=%s hasKey=%s', provider, model, baseUrl, apiKey ? 'yes' : 'NO')
 
-    const systemPrompt = buildSystemPrompt(context, fileData)
+    const systemPrompt = buildSystemPrompt(context, fileData, dbContext)
     const userMessage = `Usuario: ${prompt}\n\nAsistente:`
 
     let stream: ReadableStream
