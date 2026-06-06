@@ -933,9 +933,14 @@ Sugerí un precio de venta justo y competitivo para el mercado argentino, explic
                                             const res = await fetch('/api/ai/stream', {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] })
+                                                body: JSON.stringify({ prompt, context: 'Calculador de Costos' })
                                             })
-                                            if (!res.ok || !res.body) { setAiLoading(false); return }
+                                            if (!res.ok) {
+                                                const errData = await res.json().catch(() => ({}))
+                                                setAiSuggestion(`⚠ ${errData.error || 'Error conectando con la IA. Configurá tu proveedor en Ajustes → Conectividad.'}`)
+                                                return
+                                            }
+                                            if (!res.body) return
                                             const reader = res.body.getReader()
                                             const decoder = new TextDecoder()
                                             let text = ''
@@ -945,8 +950,9 @@ Sugerí un precio de venta justo y competitivo para el mercado argentino, explic
                                                 text += decoder.decode(value)
                                                 setAiSuggestion(text)
                                             }
-                                        } catch { /* silently fail */ }
-                                        finally { setAiLoading(false) }
+                                        } catch (e: any) {
+                                            setAiSuggestion(`⚠ Error: ${e.message || 'Verificá tu configuración de IA en Ajustes.'}`)
+                                        } finally { setAiLoading(false) }
                                     }}
                                     className="w-full flex items-center justify-center gap-2 py-2 bg-gradient-to-r from-brand-orange/20 to-brand-cyan/10 hover:from-brand-orange/30 hover:to-brand-cyan/20 border border-brand-orange/30 rounded-xl text-[10px] font-black text-brand-orange transition-all"
                                 >
