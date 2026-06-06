@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { logout } from '../login/actions'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -16,6 +16,11 @@ import {
     LogOut,
     Menu,
     X,
+    MessageSquare,
+    Send,
+    Loader2,
+    Sparkles,
+    Minimize2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import ParticleBackground from '@/components/ui/ParticleBackground'
@@ -32,6 +37,11 @@ const navItems = [
     { name: 'Proyectos', href: '/dashboard/projects', icon: Briefcase, tooltip: 'Tablero Kanban de proyectos' },
     { name: 'Ajustes', href: '/dashboard/settings', icon: Settings, tooltip: 'Configuración del taller' },
 ]
+
+interface Message {
+    role: 'user' | 'assistant'
+    content: string
+}
 
 function Sidebar() {
     const pathname = usePathname()
@@ -66,7 +76,7 @@ function Sidebar() {
                                 isActive
                                     ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/20'
                                     : 'text-neutral-500 hover:bg-neutral-900 hover:text-white border-transparent'
-                            )}
+                             )}
                         >
                             <item.icon size={18} className={isActive ? 'text-brand-orange' : 'text-neutral-600 group-hover:text-white'} />
                             <span className="lg:inline">{item.name}</span>
@@ -178,6 +188,167 @@ function Sidebar() {
     )
 }
 
+/* ─── Global Floating Copilot ─── */
+function GlobalCopilot() {
+    const pathname = usePathname()
+    const [isOpen, setIsOpen] = useState(false)
+    const [input, setInput] = useState('')
+    const [messages, setMessages] = useState<Message[]>([
+        { role: 'assistant', content: '¡Hola! Soy tu Copiloto de PrintHype. Te sigo por todo el taller para ayudarte con costos, insumos, marketing o cualquier duda operativa. ¿Qué hacemos ahora?' }
+    ])
+    const [isLoading, setIsLoading] = useState(false)
+    const messagesEndRef = useRef<HTMLDivElement>(null)
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+
+    useEffect(() => {
+        if (isOpen) {
+            scrollToBottom()
+        }
+    }, [messages, isOpen])
+
+    // Cerrar con tecla Escape
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsOpen(false)
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [])
+
+    const handleSend = async () => {
+        if (!input.trim() || isLoading) return
+        
+        const userMsg = input.trim()
+        setInput('')
+        setMessages(prev => [...prev, { role: 'user', content: userMsg }])
+        setIsLoading(true)
+
+        // Obtener un contexto simplificado según la ruta en la que está el usuario
+        let routeContext = 'Taller General'
+        if (pathname.includes('orders')) routeContext = 'Gestión de Pedidos'
+        if (pathname.includes('inventory')) routeContext = 'Inventario y Stock de Insumos'
+        if (pathname.includes('budgets')) routeContext = 'Presupuestos y Costos'
+        if (pathname.includes('projects')) routeContext = 'Work-Flow y Proyectos Kanban'
+        if (pathname.includes('viral')) routeContext = 'Marketing y Contenido Viral'
+
+        try {
+            const res = await fetch('/api/ai/stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: userMsg,
+                    context: `Asistente Global en sección: ${routeContext}`,
+                })
+            })
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}))
+                throw new Error(err.error || 'Error al conectar con la IA')
+            }
+
+            const reader = res.body?.getReader()
+            const decoder = new TextDecoder()
+            let aiText = ''
+
+            setMessages(prev => [...prev, { role: 'assistant', content: '' }])
+
+            while (true) {
+                const { done, value } = await reader!.read()
+                if (done) break
+                aiText += decoder.decode(value)
+                setMessages(prev => {
+                    const next = [...prev]
+                    next[next.length - 1].content = aiText
+                    return next
+                })
+            }
+        } catch (e: any) {
+            setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message || 'No pude procesar tu solicitud.'}` }])
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    return (
+        <div className="fixed bottom-20 lg:bottom-6 right-6 z-50 flex flex-col items-end">
+            {/* Panel de Chat */}
+            {isOpen && (
+                <div className="w-[330px] sm:w-[380px] h-[450px] bg-neutral-950/95 border border-brand-orange/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden mb-3 animate-in slide-in-from-bottom-4 duration-300 backdrop-blur-xl">
+                    {/* Header */}
+                    <div className="p-4 bg-white/[0.03] border-b border-neutral-900 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="text-brand-orange animate-pulse" size={16} />
+                            <span className="text-xs font-black uppercase tracking-widest text-white">Copiloto PrintHype</span>
+                        </div>
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            className="p-1 hover:bg-white/10 rounded-lg text-neutral-500 hover:text-white transition-colors"
+                        >
+                            <Minimize2 size={16} />
+                        </button>
+                    </div>
+
+                    {/* Messages Body */}
+                    <div className="flex-1 p-4 overflow-y-auto space-y-4 custom-scrollbar">
+                        {messages.map((m, idx) => (
+                            <div key={idx} className={cn("flex gap-2", m.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
+                                <div className={cn(
+                                    "p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed",
+                                    m.role === 'user' 
+                                        ? "bg-white/5 border border-white/5 text-white rounded-tr-none" 
+                                        : "bg-neutral-900/80 border border-neutral-800 text-neutral-200 rounded-tl-none"
+                                )}>
+                                    {m.content}
+                                </div>
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Input */}
+                    <div className="p-3 bg-black/60 border-t border-neutral-900 flex gap-2 items-center">
+                        <input
+                            type="text"
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') handleSend()
+                            }}
+                            placeholder="Pregúntame algo sobre esta sección..."
+                            className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-brand-orange/50"
+                        />
+                        <button
+                            onClick={handleSend}
+                            disabled={isLoading}
+                            className="w-9 h-9 bg-brand-orange rounded-xl flex items-center justify-center text-black font-black hover:scale-105 active:scale-95 transition-all shrink-0 disabled:opacity-50"
+                        >
+                            {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Bubble Trigger */}
+            <Tooltip content={isOpen ? "Ocultar Copiloto" : "Preguntar al Copiloto Global"} position="left">
+                <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    className={cn(
+                        "w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-black font-black transition-all hover:scale-110 active:scale-95 shadow-lg border",
+                        isOpen
+                            ? "bg-neutral-900 border-neutral-800 text-brand-orange"
+                            : "bg-gradient-to-tr from-brand-orange to-orange-400 border-orange-500 shadow-brand-orange/30 animate-pulse-glow"
+                    )}
+                >
+                    {isOpen ? <X size={20} /> : <MessageSquare size={20} />}
+                </button>
+            </Tooltip>
+        </div>
+    )
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex min-h-screen bg-[#050505] text-white">
@@ -189,6 +360,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {children}
                 </div>
             </main>
+            {/* Global floating AI Copilot */}
+            <GlobalCopilot />
         </div>
     )
 }
