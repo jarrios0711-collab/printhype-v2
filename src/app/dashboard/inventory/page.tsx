@@ -15,7 +15,8 @@ import {
     Edit3,
     ChevronDown,
     ChevronRight,
-    Package
+    Package,
+    AlertTriangle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
@@ -287,6 +288,35 @@ export default function InventoryPage() {
                     </Tooltip>
                 </div>
             </div>
+
+            {/* IA: Alertas de stock bajo / inactividad */}
+            {lowStockAlerts > 0 && (
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl animate-in fade-in duration-300">
+                    <div className="flex items-start gap-3">
+                        <AlertTriangle size={18} className="text-yellow-500 shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black text-yellow-400 uppercase tracking-widest">
+                                ⚠ {lowStockAlerts} material{lowStockAlerts !== 1 ? 'es' : ''} sin rotación
+                            </p>
+                            <p className="text-[11px] text-neutral-400 mt-0.5">
+                                Los siguientes materiales tienen stock bajo y podrían frenar la producción:
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {lowStockMaterials.map(m => (
+                                    <button
+                                        key={m.id}
+                                        onClick={() => { setActiveFilter(m.type); setExpandedType(m.type) }}
+                                        className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 rounded-lg text-[10px] font-bold text-yellow-300 transition-all"
+                                    >
+                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: m.color }}/>
+                                        {m.name} — {getMaterialStock(m).toFixed(0)}g
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Filters Bar — now clickable to open groups */}
             <div className="flex bg-neutral-950/40 border border-neutral-900 p-1.5 sm:p-2 rounded-2xl backdrop-blur-md overflow-x-auto">

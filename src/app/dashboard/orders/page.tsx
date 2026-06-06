@@ -15,7 +15,8 @@ import {
     User,
     Package,
     FileSpreadsheet,
-    Activity
+    Activity,
+    AlertTriangle
 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
@@ -641,6 +642,22 @@ function OrdersPage() {
                                     ))
                                 )}
                             </select>
+                            {/* Low stock warning */}
+                            {(() => {
+                                const mat = materials.find(m => m.id === formData.materialId)
+                                if (!mat) return null
+                                const stock = mat.stocks?.reduce((a: number, s: any) => a + s.weightGrams, 0) ?? mat.stock_grams ?? 0
+                                const threshold = Math.max((mat.initialWeight || 1000) * 0.15, 150)
+                                if (stock < threshold) return (
+                                    <div className="flex items-start gap-2 p-2.5 bg-yellow-500/10 border border-yellow-500/20 rounded-xl animate-in fade-in duration-200">
+                                        <AlertTriangle size={13} className="text-yellow-500 shrink-0 mt-0.5" />
+                                        <p className="text-[10px] text-yellow-400 leading-snug">
+                                            <span className="font-black">Stock bajo:</span> quedan {stock.toFixed(0)}g de {mat.name}. Considerá reponer antes de iniciar esta orden.
+                                        </p>
+                                    </div>
+                                )
+                                return null
+                            })()}
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-neutral-500 uppercase">Peso (gramos) *</label>

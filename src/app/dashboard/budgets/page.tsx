@@ -15,7 +15,9 @@ import {
     Send,
     ChevronRight,
     Percent,
-    Zap
+    Zap,
+    BrainCircuit,
+    RefreshCw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
@@ -174,6 +176,10 @@ function BudgetsPage() {
     const [editingBudget, setEditingBudget] = useState<Budget | null>(null)
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'STL' | 'MANUAL'>('MANUAL')
+
+    // AI suggestion state
+    const [aiSuggestion, setAiSuggestion] = useState<string | null>(null)
+    const [aiLoading, setAiLoading] = useState(false)
 
     // STL state
     const [stlFile, setStlFile] = useState<File | null>(null)
@@ -899,6 +905,63 @@ function BudgetsPage() {
                                 </p>
                             </div>
                         </div>
+
+                        {/* AI Price Suggestion */}
+                        {calculations.totalCost > 0 && (
+                            <div className="pt-2 border-t border-white/5 space-y-2">
+                                <button
+                                    type="button"
+                                    disabled={aiLoading}
+                                    onClick={async () => {
+                                        setAiSuggestion(null)
+                                        setAiLoading(true)
+                                        const mat = materials.find(m => m.id === form.materialId)
+                                        const prompt = `Sos un experto en pricing de talleres de impresión 3D en Argentina.
+Datos del trabajo:
+- Material: ${mat ? `${mat.name} (${mat.type})` : 'sin especificar'}
+- Filamento: ${form.filamentGrams}g
+- Horas impresión: ${form.printHours}h
+- Costo material: $${calculations.materialCost.toFixed(0)}
+- Costo energía: $${calculations.energyCost.toFixed(0)}
+- Mano de obra: $${calculations.laborCost.toFixed(0)}
+- Costo total: $${calculations.totalCost.toFixed(0)}
+- Precio calculado con margen ${form.marginPercent}%: $${calculations.salePrice.toFixed(0)}
+- Moneda: ${form.currency}
+
+Sugerí un precio de venta justo y competitivo para el mercado argentino, explicando brevemente tu razonamiento en 2-3 oraciones. Sé directo y concreto con el número.`
+                                        try {
+                                            const res = await fetch('/api/ai/stream', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] })
+                                            })
+                                            if (!res.ok || !res.body) { setAiLoading(false); return }
+                                            const reader = res.body.getReader()
+                                            const decoder = new TextDecoder()
+                                            let text = ''
+                                            while (true) {
+                                                const { done, value } = await reader.read()
+                                                if (done) break
+                                                text += decoder.decode(value)
+                                                setAiSuggestion(text)
+                                            }
+                                        } catch { /* silently fail */ }
+                                        finally { setAiLoading(false) }
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 py-2 bg-gradient-to-r from-brand-orange/20 to-brand-cyan/10 hover:from-brand-orange/30 hover:to-brand-cyan/20 border border-brand-orange/30 rounded-xl text-[10px] font-black text-brand-orange transition-all"
+                                >
+                                    {aiLoading
+                                        ? <><RefreshCw size={11} className="animate-spin" /> Consultando IA...</>
+                                        : <><BrainCircuit size={11} /> SUGERIR PRECIO CON IA ✨</>}
+                                </button>
+                                {aiSuggestion && (
+                                    <div className="p-3 bg-brand-orange/5 border border-brand-orange/20 rounded-xl animate-in fade-in duration-300">
+                                        <p className="text-[9px] font-black text-brand-orange uppercase tracking-widest mb-1.5">🤖 Sugerencia IA</p>
+                                        <p className="text-[11px] text-neutral-300 leading-relaxed">{aiSuggestion}</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Notes */}
