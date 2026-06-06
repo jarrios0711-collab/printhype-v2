@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
     Zap, ShoppingCart, TrendingUp, Activity, AlertTriangle,
     BrainCircuit, ChevronRight, Search, CheckCircle2,
     Thermometer, Printer, Wifi, WifiOff, Clock, X,
-    Settings, Package
+    Settings, Package, BarChart3
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -22,8 +22,109 @@ interface PrinterStatus {
     print?: { state: string; filename: string; progress: number }
 }
 
+/* ─── Helpers ─── */
+function getGreeting() {
+    const h = new Date().getHours()
+    if (h >= 5 && h < 12) return 'Buenos días'
+    if (h >= 12 && h < 19) return 'Buenas tardes'
+    return 'Buenas noches'
+}
+
+function buildAIBriefing(
+    lowStockItems: any[],
+    pendingOrders: number,
+    monthRevenue: number,
+    totalOrders: number
+): string {
+    if (totalOrders === 0) {
+        return 'Todavía no hay pedidos registrados. Cargá tu primer pedido para que pueda analizar el rendimiento de tu taller y darte insights reales. 🚀'
+    }
+    const parts: string[] = []
+    if (lowStockItems.length > 0) {
+        const names = lowStockItems.slice(0, 2).map((m: any) => m.name).join(' y ')
+        parts.push(`⚠ Stock crítico en ${names}${lowStockItems.length > 2 ? ` y ${lowStockItems.length - 2} más` : ''} — considerá reponer antes de aceptar nuevos pedidos.`)
+    }
+    if (pendingOrders > 0) {
+        parts.push(`📋 Tenés ${pendingOrders} pedido${pendingOrders !== 1 ? 's' : ''} pendiente${pendingOrders !== 1 ? 's' : ''} en producción.`)
+    }
+    if (monthRevenue === 0 && totalOrders > 0) {
+        parts.push('📊 Sin facturación este mes. Revisá si hay pedidos anteriores para completar.')
+    }
+    if (parts.length === 0) {
+        return '✅ Todo en orden. Stock OK, pedidos al día y facturación activa. ¡Seguí así!'
+    }
+    return parts.join(' ')
+}
+
+/* ─── Billing chart for last 6 months ─── */
+function BillingChart({ orders, fmt }: { orders: any[]; fmt: (n: number) => string }) {
+    const months = useMemo(() => {
+        const result: { label: string; total: number; key: string }[] = []
+        const now = new Date()
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+            const key = `${d.getFullYear()}-${d.getMonth()}`
+            const label = d.toLocaleDateString('es-AR', { month: 'short' })
+            const total = orders
+                .filter((o: any) => {
+                    const od = new Date(o.createdAt)
+                    return od.getFullYear() === d.getFullYear() && od.getMonth() === d.getMonth()
+                })
+                .reduce((acc: number, o: any) => acc + Number(o.totalPrice || 0), 0)
+            result.push({ label, total, key })
+        }
+        return result
+    }, [orders])
+
+    const maxVal = Math.max(...months.map(m => m.total), 1)
+    const hasData = months.some(m => m.total > 0)
+
+    return (
+        <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-4 sm:p-6 lg:p-8">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-base sm:text-xl font-bold flex items-center gap-3">
+                    <BarChart3 className="text-brand-cyan" size={20} />
+                    Facturación — últimos 6 meses
+                </h2>
+            </div>
+            {!hasData ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3">
+                    <BarChart3 size={36} className="text-neutral-800" />
+                    <p className="text-xs text-neutral-600 font-bold uppercase tracking-widest text-center">
+                        El gráfico aparecerá cuando tengas pedidos completados
+                    </p>
+                </div>
+            ) : (
+                <div className="flex items-end gap-2 sm:gap-3 h-32">
+                    {months.map((m) => (
+                        <Tooltip key={m.key} content={m.total > 0 ? `${m.label}: ${fmt(m.total)}` : `${m.label}: sin pedidos`}>
+                            <div className="flex-1 flex flex-col items-center gap-1.5 group cursor-default">
+                                <div className="w-full relative flex items-end justify-center" style={{ height: '96px' }}>
+                                    <div
+                                        className={cn(
+                                            'w-full rounded-t-lg transition-all duration-500',
+                                            m.total > 0
+                                                ? 'bg-gradient-to-t from-brand-orange to-brand-orange/60 group-hover:from-brand-orange group-hover:to-orange-400'
+                                                : 'bg-neutral-900'
+                                        )}
+                                        style={{ height: m.total > 0 ? `${Math.max((m.total / maxVal) * 96, 4)}px` : '4px' }}
+                                    />
+                                </div>
+                                <span className="text-[9px] font-bold text-neutral-500 uppercase group-hover:text-neutral-300 transition-colors">
+                                    {m.label}
+                                </span>
+                            </div>
+                        </Tooltip>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
 export default function DashboardPage() {
-    const [userName, setUserName] = useState('admin')
+    const [userName, setUserName] = useState<string | null>(null)
+    const [allOrders, setAllOrders] = useState<any[]>([])
     const [stats, setStats] = useState({ orders: 0, printers: 0, lowStock: 0, completedRevenue: 0, totalRevenue: 0, monthRevenue: 0, activeOrders: 0 })
     const [recentActivity, setRecentActivity] = useState<any[]>([])
     const [lowStockItems, setLowStockItems] = useState<any[]>([])
@@ -32,6 +133,7 @@ export default function DashboardPage() {
     const [onboardingDismissed, setOnboardingDismissed] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [settings, setSettings] = useState<any>(null)
+    const [pendingOrders, setPendingOrders] = useState(0)
 
     useEffect(() => {
         const dismissed = localStorage.getItem('ph_onboarding_dismissed')
@@ -44,7 +146,9 @@ export default function DashboardPage() {
                 const supabase = createClient()
                 const { data: { user } } = await supabase.auth.getUser()
                 if (user?.email) {
-                    setUserName(user.email.split('@')[0])
+                    // Use display name if set, otherwise prefix of email (but not "admin")
+                    const emailPrefix = user.email.split('@')[0]
+                    setUserName(emailPrefix === 'admin' ? null : emailPrefix)
                 }
 
                 const [ordersRes, printersRes, inventoryRes, settingsRes] = await Promise.allSettled([
@@ -59,33 +163,32 @@ export default function DashboardPage() {
                 const inventory = inventoryRes.status === 'fulfilled' && !inventoryRes.value.error ? inventoryRes.value : []
                 const settingsData = settingsRes.status === 'fulfilled' && !settingsRes.value.error ? settingsRes.value : null
                 setSettings(settingsData)
-
-        const today = new Date(); today.setHours(0,0,0,0)
-                const ordersToday = orders.filter((o: any) => new Date(o.createdAt) >= today).length
+                setAllOrders(orders)
 
                 // Facturación del mes actual
-                const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0,0,0,0)
+                const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0, 0, 0, 0)
                 const monthRevenue = orders
                     .filter((o: any) => new Date(o.createdAt) >= thisMonth)
                     .reduce((acc: number, o: any) => acc + Number(o.totalPrice || 0), 0)
 
                 // Pedidos activos (no completados)
                 const activeOrders = orders.filter((o: any) => o.status !== 'COMPLETED').length
+                const pending = orders.filter((o: any) => o.status === 'PENDING').length
+                setPendingOrders(pending)
 
-                // Stock crítico: materiales con menos de 200g
+                // Stock crítico
                 const lowStock = inventory.filter((m: any) => {
                     const stock = m.stocks?.reduce((acc: number, s: any) => acc + s.weightGrams, 0) || 0
                     return stock < 200
                 })
 
-                // Revenue: pedidos completados vs total
                 const completedRevenue = orders
                     .filter((o: any) => o.status === 'COMPLETED')
                     .reduce((acc: number, o: any) => acc + Number(o.totalPrice || 0), 0)
                 const totalRevenue = orders
                     .reduce((acc: number, o: any) => acc + Number(o.totalPrice || 0), 0)
 
-                setStats({ orders: ordersToday, printers: printers.length, lowStock: lowStock.length, completedRevenue, totalRevenue, monthRevenue, activeOrders })
+                setStats({ orders: 0, printers: printers.length, lowStock: lowStock.length, completedRevenue, totalRevenue, monthRevenue, activeOrders })
                 setLowStockItems(lowStock.slice(0, 3))
                 setRecentActivity(orders.slice(0, 5))
                 setIsEmpty({
@@ -108,19 +211,52 @@ export default function DashboardPage() {
         return `${symbol}${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
     }
 
-    const roi = stats.totalRevenue > 0
-        ? (stats.completedRevenue / stats.totalRevenue * 100).toFixed(0) + '%'
-        : '—'
+    const greeting = getGreeting()
+    const aiBriefing = useMemo(() =>
+        buildAIBriefing(lowStockItems, pendingOrders, stats.monthRevenue, allOrders.length),
+        [lowStockItems, pendingOrders, stats.monthRevenue, allOrders.length]
+    )
 
+    // Stat cards — empty state aware
     const statCards = [
-        { label: 'FACTURACIÓN MES', value: fmt(stats.monthRevenue), sub: 'pedidos del mes', icon: TrendingUp, color: 'text-brand-cyan' },
-        { label: 'PEDIDOS ACTIVOS', value: String(stats.activeOrders), sub: 'en producción', icon: ShoppingCart, color: 'text-brand-orange' },
-        { label: 'IMPRESORAS', value: String(stats.printers), sub: 'registradas', icon: Activity, color: 'text-green-500' },
-        { label: 'STOCK CRÍTICO', value: String(stats.lowStock), sub: stats.lowStock === 1 ? 'material bajo mínimo' : 'materiales bajo mínimo', icon: Zap, color: stats.lowStock > 0 ? 'text-red-500' : 'text-yellow-500' },
+        {
+            label: 'FACTURACIÓN MES',
+            value: isLoading ? '—' : stats.monthRevenue > 0 ? fmt(stats.monthRevenue) : null,
+            empty: 'Sin pedidos este mes',
+            sub: 'pedidos del mes',
+            icon: TrendingUp,
+            color: 'text-brand-cyan'
+        },
+        {
+            label: 'PEDIDOS ACTIVOS',
+            value: isLoading ? '—' : stats.activeOrders > 0 ? String(stats.activeOrders) : null,
+            empty: 'Sin pedidos activos',
+            sub: 'en producción',
+            icon: ShoppingCart,
+            color: 'text-brand-orange'
+        },
+        {
+            label: 'IMPRESORAS',
+            value: isLoading ? '—' : stats.printers > 0 ? String(stats.printers) : null,
+            empty: 'Sin impresoras',
+            sub: 'registradas',
+            icon: Activity,
+            color: 'text-green-500'
+        },
+        {
+            label: 'STOCK CRÍTICO',
+            value: isLoading ? '—' : stats.lowStock > 0 ? String(stats.lowStock) : null,
+            empty: '✅ Stock OK',
+            sub: stats.lowStock === 1 ? 'material bajo mínimo' : 'materiales bajo mínimo',
+            icon: Zap,
+            color: stats.lowStock > 0 ? 'text-red-500' : 'text-green-500'
+        },
     ]
 
     return (
         <div className="space-y-6 sm:space-y-10 max-w-7xl mx-auto">
+
+            {/* Header + greeting */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                 <div className="space-y-2">
                     <div className="flex items-center gap-2 text-brand-orange text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]">
@@ -128,7 +264,9 @@ export default function DashboardPage() {
                         Sistema Operativo JR3D v2.5
                     </div>
                     <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter text-white">
-                        Buenos días, <span className="text-brand-orange">{userName}</span>
+                        {greeting}{userName ? (
+                            <>, <span className="text-brand-orange">{userName}</span></>
+                        ) : ''}
                     </h1>
                 </div>
                 <div className="relative w-full sm:w-auto">
@@ -145,24 +283,31 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* Stat Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
                 {statCards.map((stat, i) => (
                     <Tooltip key={i} content={`${stat.label}: ${stat.sub}`}>
-                    <div className="bg-neutral-950/40 border border-neutral-900 p-5 sm:p-6 rounded-3xl hover:border-neutral-700 transition-all group relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <stat.icon size={56} className={stat.color} />
+                        <div className="bg-neutral-950/40 border border-neutral-900 p-5 sm:p-6 rounded-3xl hover:border-neutral-700 transition-all group relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <stat.icon size={56} className={stat.color} />
+                            </div>
+                            <div className="text-[9px] font-black tracking-widest mb-1 uppercase text-neutral-500">{stat.label}</div>
+                            {isLoading ? (
+                                <div className="text-3xl sm:text-4xl font-black mb-1 text-neutral-700 animate-pulse">—</div>
+                            ) : stat.value !== null ? (
+                                <div className="text-3xl sm:text-4xl font-black mb-1 text-white">{stat.value}</div>
+                            ) : (
+                                <div className="text-sm font-bold text-neutral-600 mt-2 mb-2 leading-tight">{stat.empty}</div>
+                            )}
+                            {stat.value !== null && !isLoading && (
+                                <div className="text-neutral-500 text-[10px] font-medium uppercase tracking-tighter">{stat.sub}</div>
+                            )}
                         </div>
-                        <div className="text-[9px] font-black tracking-widest mb-1 uppercase text-neutral-500">{stat.label}</div>
-                        <div className="text-3xl sm:text-4xl font-black mb-1 text-white">
-                            {isLoading ? <span className="text-neutral-700 animate-pulse">—</span> : stat.value}
-                        </div>
-                        <div className="text-neutral-500 text-[10px] font-medium uppercase tracking-tighter">{stat.sub}</div>
-                    </div>
                     </Tooltip>
                 ))}
             </div>
 
-            {/* Onboarding — solo cuando hay áreas vacías y no se ha dismissado */}
+            {/* Onboarding */}
             {!isLoading && isEmpty && !onboardingDismissed && (isEmpty.orders || isEmpty.printers || isEmpty.inventory) && (
                 <OnboardingCard
                     isEmpty={isEmpty}
@@ -173,7 +318,9 @@ export default function DashboardPage() {
                 />
             )}
 
+            {/* Main grid: activity + sidebar */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+                {/* Actividad Reciente */}
                 <div className="lg:col-span-2">
                     <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-4 sm:p-6 lg:p-8">
                         <div className="flex justify-between items-center mb-4 sm:mb-6">
@@ -190,9 +337,17 @@ export default function DashboardPage() {
                         <div className="space-y-3">
                             {isLoading ? (
                                 <p className="text-xs text-neutral-600 font-bold uppercase tracking-widest p-10 text-center animate-pulse">Cargando datos...</p>
-                            ) : recentActivity.length === 0 && !isEmpty?.orders ? (
-                                <p className="text-xs text-neutral-600 font-bold uppercase tracking-widest p-10 text-center">No hay pedidos aún. ¡Cargá el primero!</p>
-                            ) : recentActivity.length === 0 ? null : (
+                            ) : recentActivity.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                                    <Package size={36} className="text-neutral-800" />
+                                    <p className="text-xs text-neutral-600 font-bold uppercase tracking-widest text-center">
+                                        Sin pedidos aún — ¡cargá el primero!
+                                    </p>
+                                    <Link href="/dashboard/orders" className="mt-1 px-4 py-2 bg-brand-orange text-black text-[10px] font-black rounded-xl hover:scale-105 transition-all">
+                                        CREAR PEDIDO
+                                    </Link>
+                                </div>
+                            ) : (
                                 recentActivity
                                     .filter((order: any) => {
                                         if (!searchQuery) return true
@@ -203,43 +358,49 @@ export default function DashboardPage() {
                                         )
                                     })
                                     .map((order: any) => (
-                                    <Link key={order.id} href={`/dashboard/orders/${order.id}`} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all cursor-pointer group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-1.5 h-10 rounded-full bg-neutral-800 overflow-hidden">
-                                                <div className={cn("w-full h-full", order.status === 'COMPLETED' ? 'bg-green-500' : 'bg-brand-orange')}></div>
-                                            </div>
-                                            <div>
-                                                <div className="text-sm font-bold text-white group-hover:text-brand-orange transition-colors">
-                                                    {order.customerName}: {order.items?.[0]?.projectName || 'Pedido'}
+                                        <Link key={order.id} href={`/dashboard/orders/${order.id}`} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all cursor-pointer group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-1.5 h-10 rounded-full bg-neutral-800 overflow-hidden">
+                                                    <div className={cn('w-full h-full', order.status === 'COMPLETED' ? 'bg-green-500' : 'bg-brand-orange')}></div>
                                                 </div>
-                                                <div className="text-[10px] text-neutral-500 font-mono mt-0.5 uppercase">
-                                                    {new Date(order.createdAt).toLocaleDateString()} · {fmt(Number(order.totalPrice))}
+                                                <div>
+                                                    <div className="text-sm font-bold text-white group-hover:text-brand-orange transition-colors">
+                                                        {order.customerName}: {order.items?.[0]?.projectName || 'Pedido'}
+                                                    </div>
+                                                    <div className="text-[10px] text-neutral-500 font-mono mt-0.5 uppercase">
+                                                        {new Date(order.createdAt).toLocaleDateString()} · {fmt(Number(order.totalPrice))}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className={cn("px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase hidden sm:block",
-                                            order.status === 'COMPLETED' ? 'bg-green-500/10 text-green-500' : 'bg-brand-orange/10 text-brand-orange')}>
-                                            {order.status === 'COMPLETED' ? 'COMPLETADO' :
-                                             order.status === 'PRINTING' ? 'EN IMPRENTA' :
-                                             order.status === 'SHIPPED' ? 'ENVIADO' :
-                                             order.status === 'PENDING' ? 'PENDIENTE' : order.status}
-                                        </div>
-                                    </Link>
-                                ))
+                                            <div className={cn('px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase hidden sm:block',
+                                                order.status === 'COMPLETED' ? 'bg-green-500/10 text-green-500' : 'bg-brand-orange/10 text-brand-orange')}>
+                                                {order.status === 'COMPLETED' ? 'COMPLETADO' :
+                                                 order.status === 'PRINTING' ? 'EN IMPRENTA' :
+                                                 order.status === 'SHIPPED' ? 'ENVIADO' :
+                                                 order.status === 'PENDING' ? 'PENDIENTE' : order.status}
+                                            </div>
+                                        </Link>
+                                    ))
                             )}
                         </div>
                     </div>
                 </div>
 
+                {/* Sidebar */}
                 <div className="space-y-6">
+                    {/* IA Briefing */}
                     <div className="bg-gradient-to-br from-brand-orange/20 to-brand-cyan/10 border border-brand-orange/20 rounded-3xl p-6 sm:p-8 hover:border-brand-orange/50 transition-all">
                         <div className="flex items-center gap-2 text-brand-orange mb-4">
                             <BrainCircuit size={20} className="animate-pulse" />
                             <span className="text-xs font-black uppercase tracking-widest">IA BRIEFING</span>
                         </div>
-                        <h3 className="text-base font-bold leading-tight mb-4 text-white">
-                            "Seguí cargando pedidos para calcular el ROI real de tu taller."
-                        </h3>
+                        <p className="text-sm font-medium leading-relaxed mb-4 text-neutral-200">
+                            {isLoading ? (
+                                <span className="text-neutral-600 animate-pulse">Analizando tu taller...</span>
+                            ) : (
+                                <span>"{aiBriefing}"</span>
+                            )}
+                        </p>
                         <Tooltip content="Laboratorio de inteligencia artificial multi-proveedor">
                             <Link href="/dashboard/ai-lab" className="block w-full py-3 bg-black/40 hover:bg-black/60 rounded-xl text-xs font-bold border border-white/5 transition-all text-neutral-300 text-center">
                                 ABRIR LAB IA
@@ -247,9 +408,10 @@ export default function DashboardPage() {
                         </Tooltip>
                     </div>
 
+                    {/* Stock Crítico */}
                     <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-6 sm:p-8">
                         <div className="flex items-center gap-2 mb-4 text-white">
-                            <AlertTriangle className={stats.lowStock > 0 ? 'text-red-500' : 'text-yellow-500'} size={18} />
+                            <AlertTriangle className={stats.lowStock > 0 ? 'text-red-500' : 'text-green-500'} size={18} />
                             <h3 className="text-xs font-black uppercase tracking-widest">STOCK CRÍTICO</h3>
                         </div>
                         {isLoading ? (
@@ -274,6 +436,11 @@ export default function DashboardPage() {
                                     </Link>
                                 )}
                             </div>
+                        ) : isEmpty?.inventory ? (
+                            <div className="flex items-center gap-3 p-4 bg-neutral-900/50 border border-neutral-800 rounded-2xl">
+                                <Package size={16} className="text-neutral-500" />
+                                <span className="text-[10px] font-black text-neutral-500 uppercase">Sin materiales cargados</span>
+                            </div>
                         ) : (
                             <Link href="/dashboard/inventory" className="flex items-center gap-3 p-4 bg-green-500/5 border border-green-500/10 rounded-2xl hover:bg-green-500/10 transition-all">
                                 <CheckCircle2 size={16} className="text-green-500" />
@@ -284,12 +451,18 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* Billing Chart */}
+            {!isLoading && (
+                <BillingChart orders={allOrders} fmt={fmt} />
+            )}
+
             {/* Printers Monitor */}
             <PrintersMonitor />
         </div>
     )
 }
 
+/* ─── Printers Monitor ─── */
 function PrintersMonitor() {
     const [statuses, setStatuses] = useState<PrinterStatus[]>([])
     const [loading, setLoading] = useState(true)
@@ -301,11 +474,8 @@ function PrintersMonitor() {
                 const printers = await res.json()
                 if (printers.error) { setLoading(false); return }
 
-                // Merge with IPs stored in localStorage (browser-side config)
                 let savedIps: Record<string, { ip: string; port: number }> = {}
-                try {
-                    savedIps = JSON.parse(localStorage.getItem('ph_printer_ips') || '{}')
-                } catch {}
+                try { savedIps = JSON.parse(localStorage.getItem('ph_printer_ips') || '{}') } catch {}
 
                 const printersWithIp = printers.map((p: any) => ({
                     ...p,
@@ -313,12 +483,10 @@ function PrintersMonitor() {
                     port: p.port || savedIps[p.id]?.port || 7125,
                 }))
 
-                // Query each printer directly from browser (same local network)
                 const results = await Promise.all(
                     printersWithIp
                         .filter((p: any) => p.ip_address)
                         .map(async (p: any) => {
-                            // Try the local proxy first, fall back to direct connection
                             const ip = p.ip_address
                             const port = p.port || 7125
                             const proxyUrl = `http://localhost:3001/proxy/${ip}/${port}`
@@ -405,11 +573,7 @@ function PrintersMonitor() {
                                 <div className={`w-2 h-2 rounded-full ${p.online ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-red-500/50'}`}></div>
                                 <span className="font-bold text-sm text-white">{p.name}</span>
                             </div>
-                            {p.online ? (
-                                <Wifi size={14} className="text-green-500" />
-                            ) : (
-                                <WifiOff size={14} className="text-red-500/50" />
-                            )}
+                            {p.online ? <Wifi size={14} className="text-green-500" /> : <WifiOff size={14} className="text-red-500/50" />}
                         </div>
 
                         {p.online && p.temperature ? (
