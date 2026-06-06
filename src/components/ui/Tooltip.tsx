@@ -49,7 +49,7 @@ export default function Tooltip({ content, children, position = 'top', delay = 4
         <div
           role="tooltip"
           className={cn(
-            'absolute z-[999] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap',
+            'absolute z-[999] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider max-w-[200px] break-words text-center',
             'bg-neutral-800 text-neutral-200 rounded-lg shadow-xl border border-neutral-700',
             'animate-in fade-in zoom-in duration-150',
             posClasses[position],

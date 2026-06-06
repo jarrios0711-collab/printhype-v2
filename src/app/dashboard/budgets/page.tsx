@@ -89,6 +89,12 @@ const statusIcons: Record<string, string> = {
     APPROVED: '✅',
 }
 
+const statusLabels: Record<string, string> = {
+    DRAFT: 'BORRADOR',
+    SENT: 'ENVIADO',
+    APPROVED: 'APROBADO',
+}
+
 // --- STL Parser ---
 
 /**
@@ -618,7 +624,7 @@ function BudgetsPage() {
                                             "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black tracking-widest border",
                                             statusColors[b.status]
                                         )}>
-                                            {statusIcons[b.status]} {b.status}
+                                            {statusIcons[b.status]} {statusLabels[b.status] || b.status}
                                         </span>
                                     </td>
                                     <td className="p-5 text-[10px] text-neutral-500 font-bold" data-label="Fecha">
@@ -658,7 +664,7 @@ function BudgetsPage() {
                                         : 'text-neutral-500 hover:text-white'
                                 )}
                             >
-                                {tab === 'STL' ? '📐 STL AUTO' : '✏️ MANUAL'}
+                                {tab === 'STL' ? '📐 STL AUTOMÁTICO' : '✏️ MANUAL'}
                             </button>
                         ))}
                     </div>
@@ -990,9 +996,9 @@ function BudgetsPage() {
                                 onChange={e => setEditForm({ ...editForm, status: e.target.value })}
                                 className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none text-white appearance-none tap-target"
                             >
-                                <option value="DRAFT">📝 DRAFT</option>
-                                <option value="SENT">📤 SENT</option>
-                                <option value="APPROVED">✅ APPROVED</option>
+                                <option value="DRAFT">📝 BORRADOR</option>
+                                <option value="SENT">📤 ENVIADO</option>
+                                <option value="APPROVED">✅ APROBADO</option>
                             </select>
                         </div>
 

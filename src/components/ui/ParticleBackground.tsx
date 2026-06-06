@@ -142,16 +142,16 @@ export default function ParticleBackground() {
     let time = 0
     const animate = () => {
       requestAnimationFrame(animate)
-      time += 0.001
+      time += 0.0005
 
-      stars.rotation.y += 0.0005
-      stars.rotation.x = Math.sin(time * 0.1) * 0.1
-      orbs.rotation.y += 0.001
-      orbs.rotation.x += 0.0005
+      stars.rotation.y += 0.00025
+      stars.rotation.x = Math.sin(time * 0.05) * 0.05
+      orbs.rotation.y += 0.0005
+      orbs.rotation.x += 0.00025
 
       // Subtle mouse parallax
-      stars.rotation.y += mouse.x * 0.0002
-      stars.rotation.x += mouse.y * 0.0001
+      stars.rotation.y += mouse.x * 0.0001
+      stars.rotation.x += mouse.y * 0.00005
 
       // Animate orbs positions
       const positions = orbs.geometry.attributes.position.array as Float32Array
@@ -184,7 +184,7 @@ export default function ParticleBackground() {
     <div
       ref={containerRef}
       className="fixed inset-0 pointer-events-none z-0"
-      style={{ opacity: 0.6 }}
+      style={{ opacity: 0.25 }}
     />
   )
 }

@@ -69,7 +69,7 @@ export default function AILabPage() {
         },
         {
             id: 'content-gen',
-            title: 'Content Generator',
+            title: 'Generador de Contenido',
             desc: 'Crea guiones y copies para redes sociales',
             icon: Sparkles,
             context: 'Hola jarri, ¿qué pieza queremos viralizar hoy? Puedo escribirte guiones para Reels o descripciones para Instagram.'

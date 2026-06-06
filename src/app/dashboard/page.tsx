@@ -24,7 +24,7 @@ interface PrinterStatus {
 
 export default function DashboardPage() {
     const [userName, setUserName] = useState('admin')
-    const [stats, setStats] = useState({ orders: 0, printers: 0, lowStock: 0, completedRevenue: 0, totalRevenue: 0 })
+    const [stats, setStats] = useState({ orders: 0, printers: 0, lowStock: 0, completedRevenue: 0, totalRevenue: 0, monthRevenue: 0, activeOrders: 0 })
     const [recentActivity, setRecentActivity] = useState<any[]>([])
     const [lowStockItems, setLowStockItems] = useState<any[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -60,8 +60,17 @@ export default function DashboardPage() {
                 const settingsData = settingsRes.status === 'fulfilled' && !settingsRes.value.error ? settingsRes.value : null
                 setSettings(settingsData)
 
-                const today = new Date(); today.setHours(0,0,0,0)
+        const today = new Date(); today.setHours(0,0,0,0)
                 const ordersToday = orders.filter((o: any) => new Date(o.createdAt) >= today).length
+
+                // Facturación del mes actual
+                const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0,0,0,0)
+                const monthRevenue = orders
+                    .filter((o: any) => new Date(o.createdAt) >= thisMonth)
+                    .reduce((acc: number, o: any) => acc + Number(o.totalPrice || 0), 0)
+
+                // Pedidos activos (no completados)
+                const activeOrders = orders.filter((o: any) => o.status !== 'COMPLETED').length
 
                 // Stock crítico: materiales con menos de 200g
                 const lowStock = inventory.filter((m: any) => {
@@ -76,7 +85,7 @@ export default function DashboardPage() {
                 const totalRevenue = orders
                     .reduce((acc: number, o: any) => acc + Number(o.totalPrice || 0), 0)
 
-                setStats({ orders: ordersToday, printers: printers.length, lowStock: lowStock.length, completedRevenue, totalRevenue })
+                setStats({ orders: ordersToday, printers: printers.length, lowStock: lowStock.length, completedRevenue, totalRevenue, monthRevenue, activeOrders })
                 setLowStockItems(lowStock.slice(0, 3))
                 setRecentActivity(orders.slice(0, 5))
                 setIsEmpty({
@@ -104,9 +113,9 @@ export default function DashboardPage() {
         : '—'
 
     const statCards = [
-        { label: 'PEDIDOS HOY', value: String(stats.orders), sub: 'recibidos', icon: ShoppingCart, color: 'text-brand-cyan' },
-        { label: 'COMPLETADOS', value: roi, sub: 'del total facturado', icon: TrendingUp, color: 'text-green-500' },
-        { label: 'IMPRESORAS', value: String(stats.printers), sub: 'registradas', icon: Activity, color: 'text-brand-orange' },
+        { label: 'FACTURACIÓN MES', value: fmt(stats.monthRevenue), sub: 'pedidos del mes', icon: TrendingUp, color: 'text-brand-cyan' },
+        { label: 'PEDIDOS ACTIVOS', value: String(stats.activeOrders), sub: 'en producción', icon: ShoppingCart, color: 'text-brand-orange' },
+        { label: 'IMPRESORAS', value: String(stats.printers), sub: 'registradas', icon: Activity, color: 'text-green-500' },
         { label: 'STOCK CRÍTICO', value: String(stats.lowStock), sub: stats.lowStock === 1 ? 'material bajo mínimo' : 'materiales bajo mínimo', icon: Zap, color: stats.lowStock > 0 ? 'text-red-500' : 'text-yellow-500' },
     ]
 
@@ -210,7 +219,10 @@ export default function DashboardPage() {
                                         </div>
                                         <div className={cn("px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase hidden sm:block",
                                             order.status === 'COMPLETED' ? 'bg-green-500/10 text-green-500' : 'bg-brand-orange/10 text-brand-orange')}>
-                                            {order.status}
+                                            {order.status === 'COMPLETED' ? 'COMPLETADO' :
+                                             order.status === 'PRINTING' ? 'EN IMPRENTA' :
+                                             order.status === 'SHIPPED' ? 'ENVIADO' :
+                                             order.status === 'PENDING' ? 'PENDIENTE' : order.status}
                                         </div>
                                     </Link>
                                 ))

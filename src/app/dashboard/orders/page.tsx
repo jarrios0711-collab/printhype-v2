@@ -221,6 +221,19 @@ function OrdersPage() {
         COMPLETED: 'bg-green-500/10 text-green-500 border-green-500/20',
     }
 
+    const statusLabels: Record<string, string> = {
+        PENDING: 'PENDIENTE',
+        PRINTING: 'EN IMPRENTA',
+        SHIPPED: 'ENVIADO',
+        COMPLETED: 'COMPLETADO',
+    }
+
+    const priorityLabels: Record<string, string> = {
+        NORMAL: 'NORMAL',
+        HIGH: 'ALTA',
+        URGENT: 'URGENTE',
+    }
+
     const priorityColors = {
         NORMAL: 'bg-neutral-800 text-neutral-400 border-neutral-700',
         HIGH: 'bg-brand-orange/10 text-brand-orange border-brand-orange/20',
@@ -375,7 +388,7 @@ function OrdersPage() {
                                                 "w-fit px-1.5 py-0.5 rounded text-[8px] font-black tracking-tighter border",
                                                 priorityColors[order.priority as keyof typeof priorityColors] || priorityColors.NORMAL
                                             )}>
-                                                {order.priority}
+                                                {priorityLabels[order.priority] || order.priority}
                                             </div>
                                             {order.deliveryDate && (() => {
                                                 const delivery = new Date(order.deliveryDate + 'T00:00:00')
@@ -437,7 +450,7 @@ function OrdersPage() {
                                             statusColors[order.status as keyof typeof statusColors]
                                         )}>
                                             <StatusIcon status={order.status} />
-                                            {order.status}
+                                            {statusLabels[order.status] || order.status}
                                         </div>
                                     </td>
                                     <td className="p-5 font-black text-white text-sm" data-label="Total">

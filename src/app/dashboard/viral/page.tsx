@@ -54,6 +54,12 @@ const statusColors: Record<string, string> = {
     LIVE: 'bg-green-500/10 text-green-500 border-green-500/20',
 }
 
+const statusLabels: Record<string, string> = {
+    DRAFT: 'BORRADOR',
+    SCHEDULED: 'PROGRAMADO',
+    LIVE: 'EN VIVO',
+}
+
 export default function ViralPage() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -330,11 +336,11 @@ export default function ViralPage() {
                                                 "w-full text-center py-1.5 rounded-full text-[9px] font-black tracking-widest border transition-all hover:scale-105",
                                                 statusColors[camp.status]
                                             )}
-                                            title={`Cambiar a ${nextStatus(camp.status)}`}
+                                            title={`Cambiar a ${statusLabels[nextStatus(camp.status)] || nextStatus(camp.status)}`}
                                         >
-                                            {camp.status === 'DRAFT' && '📝 DRAFT'}
-                                            {camp.status === 'SCHEDULED' && '📅 SCHEDULED'}
-                                            {camp.status === 'LIVE' && '🔴 LIVE'}
+                                            {camp.status === 'DRAFT' && '📝 BORRADOR'}
+                                            {camp.status === 'SCHEDULED' && '📅 PROGRAMADO'}
+                                            {camp.status === 'LIVE' && '🔴 EN VIVO'}
                                         </button>
                                     </div>
 
@@ -390,7 +396,7 @@ export default function ViralPage() {
                             <select disabled
                                 className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-neutral-500 outline-none appearance-none tap-target"
                             >
-                                <option>DRAFT</option>
+                                <option>📝 BORRADOR</option>
                             </select>
                         </div>
                     </div>
@@ -486,9 +492,9 @@ export default function ViralPage() {
                                         editForm.status === 'SCHEDULED' ? 'text-brand-cyan' : 'text-neutral-400'
                                     )}
                                 >
-                                    <option value="DRAFT">📝 DRAFT</option>
-                                    <option value="SCHEDULED">📅 SCHEDULED</option>
-                                    <option value="LIVE">🔴 LIVE</option>
+                                    <option value="DRAFT">📝 BORRADOR</option>
+                                    <option value="SCHEDULED">📅 PROGRAMADO</option>
+                                    <option value="LIVE">🔴 EN VIVO</option>
                                 </select>
                             </div>
                         </div>
