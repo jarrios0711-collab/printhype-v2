@@ -1,4 +1,4 @@
-import { login, signup } from './actions'
+import { login, signup, loginGuest } from './actions'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 
 export default async function LoginPage(props: { searchParams?: Promise<{ error?: string; message?: string }> }) {
@@ -7,14 +7,14 @@ export default async function LoginPage(props: { searchParams?: Promise<{ error?
   const message = searchParams?.message
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-[#050505]">
-      <div className="w-full max-w-md p-8 bg-neutral-900/50 border border-neutral-800 rounded-2xl shadow-2xl backdrop-blur-2xl">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      <div className="w-full max-w-md p-8 glass-card rounded-2xl shadow-2xl">
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-brand-orange flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(255,102,0,0.3)]">
             <span className="text-3xl font-black text-black">P</span>
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white uppercase">Print<span className="text-brand-orange">Hype</span></h1>
-          <p className="text-neutral-500 text-sm mt-1">SaaS de Gestión JR3D</p>
+          <p className="text-secondary text-sm mt-1">SaaS de Gestión JR3D</p>
         </div>
 
         {error && (
@@ -71,7 +71,19 @@ export default async function LoginPage(props: { searchParams?: Promise<{ error?
           </div>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-neutral-800 text-center">
+        <div className="mt-4 pt-2">
+          <form action={loginGuest}>
+            <button
+              type="submit"
+              title="Probar la app al instante sin ingresar credenciales"
+              className="w-full py-3 bg-brand-cyan hover:bg-cyan-400 font-black text-black text-xs uppercase tracking-widest rounded-xl transition-all hover:scale-[1.01] shadow-[0_0_20px_rgba(0,242,255,0.2)]"
+            >
+              Entrar como Invitado (Testeo Rápido)
+            </button>
+          </form>
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-neutral-800 text-center">
           <p className="text-xs text-neutral-600 font-medium">
             Panel de gestión — <span className="text-brand-orange font-bold">JR3D</span>
           </p>

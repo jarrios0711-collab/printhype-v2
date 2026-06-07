@@ -57,6 +57,22 @@ export async function signup(formData: FormData) {
   }
 }
 
+export async function loginGuest() {
+  const supabase = await createClient()
+
+  const email = 'invitado@jr3d.com'
+  const password = 'invitadotesteo'
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+  if (error) {
+    redirect(`/login?error=${encodeURIComponent('No se pudo iniciar sesión como invitado: ' + error.message)}`)
+  }
+
+  revalidatePath('/', 'layout')
+  redirect('/dashboard')
+}
+
 export async function logout() {
   const supabase = await createClient()
   const { error } = await supabase.auth.signOut()
