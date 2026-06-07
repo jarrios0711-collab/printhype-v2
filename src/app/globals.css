@@ -11,7 +11,7 @@
 body {
     color: rgb(var(--foreground-rgb));
     background-color: #050505;
-    background-image: linear-gradient(rgba(5, 5, 5, 0.88), rgba(5, 5, 5, 0.88)), url('/printer_bg.png');
+    background-image: linear-gradient(rgba(5, 5, 5, 0.75), rgba(5, 5, 5, 0.75)), url('/printer_bg.png');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
