@@ -209,17 +209,17 @@ function OrdersPage() {
     }, [filteredOrders, currentPage])
 
     const stats = [
-        { label: 'Pendientes', count: orders.filter(o => o.status === 'PENDING').length, color: 'text-yellow-500' },
+        { label: 'Pendientes', count: orders.filter(o => o.status === 'PENDING').length, color: 'text-brand-cyan' },
         { label: 'En Imprenta', count: orders.filter(o => o.status === 'PRINTING').length, color: 'text-brand-orange' },
-        { label: 'Para Enviar', count: orders.filter(o => o.status === 'SHIPPED').length, color: 'text-brand-cyan' },
-        { label: 'Completados', count: orders.filter(o => o.status === 'COMPLETED').length, color: 'text-green-500' },
+        { label: 'Para Enviar', count: orders.filter(o => o.status === 'SHIPPED').length, color: 'text-brand-cyan shadow-[0_0_10px_rgba(0,242,255,0.15)]' },
+        { label: 'Completados', count: orders.filter(o => o.status === 'COMPLETED').length, color: 'text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.15)]' },
     ]
 
     const statusColors = {
-        PENDING: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+        PENDING: 'bg-brand-cyan/10 text-brand-cyan border-brand-cyan/20',
         PRINTING: 'bg-brand-orange/10 text-brand-orange border-brand-orange/20',
         SHIPPED: 'bg-brand-cyan/10 text-brand-cyan border-brand-cyan/20',
-        COMPLETED: 'bg-green-500/10 text-green-500 border-green-500/20',
+        COMPLETED: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
     }
 
     const statusLabels: Record<string, string> = {
@@ -292,8 +292,8 @@ function OrdersPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 {stats.map((stat, i) => (
-                    <div key={i} className="bg-neutral-950/40 border border-neutral-900 p-3 sm:p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
-                        <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-neutral-500">{stat.label}</span>
+                    <div key={i} className="glass-card p-3 sm:p-4 rounded-2xl flex items-center justify-between">
+                        <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-secondary">{stat.label}</span>
                         <span className={`text-lg sm:text-xl font-black ${stat.color}`}>{stat.count}</span>
                     </div>
                 ))}
@@ -307,13 +307,13 @@ function OrdersPage() {
                             placeholder="Buscar por cliente, ID o proyecto..."
                             value={searchQuery}
                             onChange={(e) => {
-                                setSearchQuery(e.target.value)
-                                setCurrentPage(1)
+                                  setSearchQuery(e.target.value)
+                                  setCurrentPage(1)
                             }}
                             className="w-full bg-neutral-950/40 border border-neutral-900 rounded-xl px-4 py-2.5 pl-12 text-sm focus:outline-none focus:border-brand-orange/50 transition-all font-medium text-white tap-target"
                         />
                     </Tooltip>
-                    <Search className="absolute left-4 top-3 text-neutral-600 group-focus-within:text-brand-orange transition-colors" size={16} />
+                    <Search className="absolute left-4 top-3 text-secondary group-focus-within:text-brand-orange transition-colors" size={16} />
                 </div>
                 <Tooltip content="Filtrar órdenes por estado de producción">
                     <select
@@ -333,15 +333,15 @@ function OrdersPage() {
                 </Tooltip>
             </div>
 
-            <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl overflow-hidden backdrop-blur-md">
+            <div className="glass-card rounded-3xl overflow-hidden">
                 <table className="w-full text-left border-collapse responsive-table">
                     <thead>
                         <tr className="border-b border-neutral-900 bg-white/5">
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">ID Orden</th>
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Cliente</th>
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Items</th>
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Estado</th>
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Total</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">ID Orden</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Cliente</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Items</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Estado</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Total</th>
                             <th className="p-5"></th>
                         </tr>
                     </thead>

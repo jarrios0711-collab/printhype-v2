@@ -10,9 +10,35 @@
 
 body {
     color: rgb(var(--foreground-rgb));
-    background: linear-gradient(to bottom,
-            transparent,
-            rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+    background-color: #050505;
+    background-image: linear-gradient(rgba(5, 5, 5, 0.88), rgba(5, 5, 5, 0.88)), url('/printer_bg.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+@layer utilities {
+    .glass-card {
+        background: rgba(18, 18, 18, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    .glass-card-hover {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card-hover:hover {
+        background: rgba(24, 24, 24, 0.85);
+        border-color: rgba(255, 102, 0, 0.25);
+        box-shadow: 0 8px 32px 0 rgba(255, 102, 0, 0.08);
+        transform: translateY(-2px);
+    }
+    .text-secondary {
+        color: #a3a3a3;
+    }
 }
 
 @layer utilities {

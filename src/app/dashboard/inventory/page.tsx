@@ -319,7 +319,7 @@ export default function InventoryPage() {
             )}
 
             {/* Filters Bar — now clickable to open groups */}
-            <div className="flex bg-neutral-950/40 border border-neutral-900 p-1.5 sm:p-2 rounded-2xl backdrop-blur-md overflow-x-auto">
+            <div className="flex glass-card p-1.5 sm:p-2 rounded-2xl overflow-x-auto">
                 <div className="flex gap-1">
                     {['Todos', ...Dictionary.inventory.categories].map((filter, i) => {
                         const count = filter === 'Todos' ? materials.length : (grouped[filter]?.length || 0)
@@ -329,14 +329,14 @@ export default function InventoryPage() {
                                     onClick={() => handleFilterClick(filter)}
                                     className={cn(
                                         "px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap tap-target flex items-center gap-1.5",
-                                        activeFilter === filter ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'
+                                        activeFilter === filter ? 'bg-neutral-800 text-white' : 'text-secondary hover:text-white'
                                     )}
                                 >
                                     {typeIcons[filter] || ''} {filter}
                                     {count > 0 && (
                                         <span className={cn(
                                             "text-[9px] px-1.5 py-0.5 rounded-full font-black",
-                                            activeFilter === filter ? 'bg-neutral-700 text-neutral-300' : 'bg-neutral-800 text-neutral-500'
+                                            activeFilter === filter ? 'bg-neutral-700 text-neutral-300' : 'bg-neutral-800 text-secondary'
                                         )}>
                                             {count}
                                         </span>
@@ -362,9 +362,9 @@ export default function InventoryPage() {
                     <p className="text-xs font-black text-neutral-500 uppercase tracking-widest">Analizando Stocks...</p>
                 </div>
             ) : Object.keys(filteredGroups).length === 0 ? (
-                <div className="text-center py-20 bg-neutral-950/40 border border-neutral-900 rounded-3xl backdrop-blur-md">
+                <div className="text-center py-20 glass-card rounded-3xl">
                     <Package size={40} className="mx-auto text-neutral-800 mb-4" />
-                    <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+                    <p className="text-xs font-bold text-secondary uppercase tracking-widest">
                         {activeFilter === 'Todos'
                             ? 'No hay materiales registrados. Comienza agregando uno.'
                             : `No hay materiales de tipo ${activeFilter}.`}
@@ -378,7 +378,7 @@ export default function InventoryPage() {
                         const hasLowStock = items.some(m => getMaterialStock(m) < 200)
 
                         return (
-                            <div key={type} className="bg-neutral-950/40 border border-neutral-900 rounded-3xl overflow-hidden backdrop-blur-md transition-all">
+                            <div key={type} className="glass-card rounded-3xl overflow-hidden transition-all">
                                 {/* Group Header — clickable */}
                                 <button
                                     onClick={() => toggleType(type)}
@@ -400,7 +400,7 @@ export default function InventoryPage() {
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-[10px] sm:text-xs text-neutral-500 mt-0.5 font-medium">
+                                            <p className="text-[10px] sm:text-xs text-secondary mt-0.5 font-medium">
                                                 Stock total: {totalStock.toFixed(0)}g · Desde {fmt(Math.min(...items.map(m => m.pricePerKg)))}/kg
                                             </p>
                                         </div>
@@ -500,16 +500,16 @@ export default function InventoryPage() {
 
             {/* Quick Insights */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="p-6 bg-brand-orange/5 border border-brand-orange/20 rounded-2xl backdrop-blur-md">
+                <div className="p-6 bg-brand-orange/5 border border-brand-orange/20 rounded-2xl">
                     <div className="text-[10px] font-black text-brand-orange uppercase tracking-widest mb-1">Valor Total Inventario</div>
                     <div className="text-2xl font-black text-white">{fmt(totalInventoryValue)}</div>
                 </div>
-                <div className="p-6 bg-brand-cyan/5 border border-brand-cyan/20 rounded-2xl backdrop-blur-md">
+                <div className="p-6 bg-brand-cyan/5 border border-brand-cyan/20 rounded-2xl">
                     <div className="text-[10px] font-black text-brand-cyan uppercase tracking-widest mb-1">Alertas de Reposición</div>
                     <div className="text-2xl font-black text-white">{lowStockAlerts} Materiales</div>
                 </div>
-                <div className="p-6 bg-neutral-900/50 border border-neutral-800 rounded-2xl backdrop-blur-md">
-                    <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Material más popular</div>
+                <div className="p-6 glass-card rounded-2xl">
+                    <div className="text-[10px] font-black text-secondary uppercase tracking-widest mb-1">Material más popular</div>
                     <div className="text-lg font-black text-white uppercase tracking-tighter">
                         {materials.length > 0
                             ? (() => {

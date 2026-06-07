@@ -65,7 +65,7 @@ function BillingChart({ orders, fmt }: { orders: any[]; fmt: (n: number) => stri
     const hasData = months.some(m => m.total > 0)
 
     return (
-        <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-4 sm:p-6 lg:p-8">
+        <div className="glass-card rounded-3xl p-4 sm:p-6 lg:p-8">
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-base sm:text-xl font-bold flex items-center gap-3">
                     <BarChart3 className="text-brand-cyan" size={20} />
@@ -75,7 +75,7 @@ function BillingChart({ orders, fmt }: { orders: any[]; fmt: (n: number) => stri
             {!hasData ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">
                     <BarChart3 size={36} className="text-neutral-800" />
-                    <p className="text-xs text-neutral-600 font-bold uppercase tracking-widest text-center">
+                    <p className="text-xs text-secondary font-bold uppercase tracking-widest text-center">
                         El gráfico aparecerá cuando tengas pedidos completados
                     </p>
                 </div>
@@ -95,7 +95,7 @@ function BillingChart({ orders, fmt }: { orders: any[]; fmt: (n: number) => stri
                                         style={{ height: m.total > 0 ? `${Math.max((m.total / maxVal) * 96, 4)}px` : '4px' }}
                                     />
                                 </div>
-                                <span className="text-[9px] font-bold text-neutral-500 uppercase group-hover:text-neutral-300 transition-colors">
+                                <span className="text-[9px] font-bold text-secondary uppercase group-hover:text-neutral-300 transition-colors">
                                     {m.label}
                                 </span>
                             </div>
@@ -560,8 +560,8 @@ export default function DashboardPage() {
                         variation: getVariation(stats.activeOrders, stats.prevActiveOrders),
                         isPositive: stats.activeOrders >= stats.prevActiveOrders,
                         icon: ShoppingCart,
-                        color: 'text-purple-500',
-                        glow: 'group-hover:border-purple-500/40'
+                        color: 'text-brand-cyan',
+                        glow: 'group-hover:border-brand-cyan/40'
                     },
                     {
                         label: 'HORAS PENDIENTES',
@@ -569,16 +569,16 @@ export default function DashboardPage() {
                         variation: 'Promedio de cola',
                         isPositive: true,
                         icon: Clock,
-                        color: 'text-green-500',
-                        glow: 'group-hover:border-green-500/40'
+                        color: 'text-emerald-500',
+                        glow: 'group-hover:border-emerald-500/40'
                     }
                 ].map((kpi, i) => (
-                    <div key={i} className="bg-neutral-950/40 border border-neutral-900 p-5 rounded-3xl transition-all duration-300 hover:bg-neutral-900/10 hover:-translate-y-1 group relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                    <div key={i} className="glass-card glass-card-hover p-5 rounded-3xl transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden flex flex-col justify-between min-h-[140px]">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <kpi.icon size={48} className={kpi.color} />
                         </div>
                         <div>
-                            <div className="text-[9px] font-black tracking-widest uppercase text-neutral-500 mb-1">{kpi.label}</div>
+                            <div className="text-[9px] font-black tracking-widest uppercase text-secondary mb-1">{kpi.label}</div>
                             {isLoading ? (
                                 <div className="text-2xl sm:text-3xl font-black text-neutral-700 animate-pulse">—</div>
                             ) : (
@@ -587,13 +587,13 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex items-center gap-1.5 mt-4">
                             {kpi.isPositive ? (
-                                <ArrowUpRight size={14} className="text-green-500 shrink-0" />
+                                <ArrowUpRight size={14} className="text-emerald-500 shrink-0" />
                             ) : (
                                 <ArrowDownRight size={14} className="text-red-500 shrink-0" />
                             )}
                             <span className={cn(
                                 "text-[10px] font-bold uppercase tracking-tight",
-                                kpi.isPositive ? "text-green-500" : "text-red-500"
+                                kpi.isPositive ? "text-emerald-500" : "text-red-500"
                             )}>
                                 {kpi.variation}
                             </span>
@@ -608,13 +608,13 @@ export default function DashboardPage() {
                 
                 {/* SECCIÓN 2 - Alertas Inteligentes (2 Columnas en pantallas anchas) */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-6 sm:p-8">
+                    <div className="glass-card rounded-3xl p-6 sm:p-8">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-base sm:text-xl font-bold flex items-center gap-3">
                                 <AlertTriangle className="text-brand-orange animate-pulse" size={20} />
                                 Alertas del Negocio
                             </h2>
-                            <span className="px-2.5 py-0.5 bg-neutral-900 text-neutral-500 text-[10px] font-bold rounded-full">
+                            <span className="px-2.5 py-0.5 bg-neutral-900 text-secondary text-[10px] font-bold rounded-full">
                                 {alerts.length} PRIORITARIAS
                             </span>
                         </div>
@@ -652,7 +652,7 @@ export default function DashboardPage() {
                                             )} />
                                             <div>
                                                 <h4 className="text-xs sm:text-sm font-bold text-white leading-tight">{alert.title}</h4>
-                                                <p className="text-[11px] text-neutral-500 mt-1 leading-snug">{alert.desc}</p>
+                                                <p className="text-[11px] text-secondary mt-1 leading-snug">{alert.desc}</p>
                                             </div>
                                         </div>
                                         <Link
@@ -711,13 +711,13 @@ export default function DashboardPage() {
                 
                 {/* SECCIÓN 4 - Actividad Reciente (Timeline) */}
                 <div className="lg:col-span-2">
-                    <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-4 sm:p-8">
+                    <div className="glass-card rounded-3xl p-4 sm:p-8">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-base sm:text-xl font-bold flex items-center gap-3">
                                 <Activity className="text-brand-orange" size={20} />
                                 Actividad Reciente
                             </h2>
-                            <Link href="/dashboard/orders" className="text-neutral-500 text-xs hover:text-white transition-colors flex items-center gap-1 font-bold">
+                            <Link href="/dashboard/orders" className="text-secondary text-xs hover:text-white transition-colors flex items-center gap-1 font-bold">
                                 VER PEDIDOS <ChevronRight size={14} />
                             </Link>
                         </div>
@@ -761,9 +761,9 @@ export default function DashboardPage() {
 
                 {/* SECCIÓN 5 - Acciones Rápidas */}
                 <div className="space-y-6">
-                    <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-6 sm:p-8 flex flex-col justify-between h-full">
+                    <div className="glass-card rounded-3xl p-6 sm:p-8 flex flex-col justify-between h-full">
                         <div>
-                            <h3 className="text-xs font-black uppercase tracking-widest text-neutral-500 mb-6">Acciones Rápidas</h3>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-secondary mb-6">Acciones Rápidas</h3>
                             
                             <div className="grid grid-cols-1 gap-3">
                                 <button
@@ -1017,7 +1017,7 @@ function PrintersMonitor() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {statuses.map((p) => (
-                    <div key={p.id} className="bg-neutral-950/40 border border-neutral-900 rounded-2xl p-5 backdrop-blur-md hover:border-neutral-700 transition-all">
+                    <div key={p.id} className="glass-card glass-card-hover rounded-2xl p-5 hover:border-neutral-700 transition-all">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2.5">
                                 <div className={`w-2 h-2 rounded-full ${p.online ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-red-500/50'}`}></div>

@@ -80,9 +80,9 @@ const DENSITY_MAP: Record<string, number> = {
 }
 
 const statusColors: Record<string, string> = {
-    DRAFT: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+    DRAFT: 'bg-brand-cyan/10 text-brand-cyan border-brand-cyan/20',
     SENT: 'bg-brand-cyan/10 text-brand-cyan border-brand-cyan/20',
-    APPROVED: 'bg-green-500/10 text-green-500 border-green-500/20',
+    APPROVED: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
 }
 
 const statusIcons: Record<string, string> = {
@@ -538,8 +538,8 @@ function BudgetsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Presupuestos</h1>
-                    <p className="text-neutral-500 text-xs sm:text-sm mt-1">Cotizaciones y control de ganancias.</p>
+                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">Presupuestos</h1>
+                    <p className="text-secondary text-xs sm:text-sm mt-1">Cotizaciones y control de ganancias.</p>
                 </div>
                 <Tooltip content="Crear nuevo presupuesto">
                     <button
@@ -553,32 +553,32 @@ function BudgetsPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4 sm:gap-6">
-                <div className="p-5 sm:p-6 bg-neutral-950/40 border border-neutral-900 rounded-2xl backdrop-blur-md">
-                    <div className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Total</div>
+                <div className="p-5 sm:p-6 glass-card rounded-2xl">
+                    <div className="text-[10px] font-black text-secondary uppercase tracking-widest mb-1">Total</div>
                     <div className="text-xl sm:text-2xl font-black text-white">{stats.total}</div>
                 </div>
-                <div className="p-5 sm:p-6 bg-neutral-950/40 border border-neutral-900 rounded-2xl backdrop-blur-md">
+                <div className="p-5 sm:p-6 glass-card rounded-2xl">
                     <div className="text-[10px] font-black text-brand-cyan uppercase tracking-widest mb-1">Enviados</div>
                     <div className="text-xl sm:text-2xl font-black text-brand-cyan">{stats.sent}</div>
                 </div>
-                <div className="p-5 sm:p-6 bg-neutral-950/40 border border-neutral-900 rounded-2xl backdrop-blur-md">
-                    <div className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">Aprobados</div>
-                    <div className="text-xl sm:text-2xl font-black text-green-500">{stats.approved}</div>
+                <div className="p-5 sm:p-6 glass-card rounded-2xl">
+                    <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Aprobados</div>
+                    <div className="text-xl sm:text-2xl font-black text-emerald-500">{stats.approved}</div>
                 </div>
             </div>
 
             {/* Budgets Table */}
-            <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl overflow-hidden backdrop-blur-md">
+            <div className="glass-card rounded-3xl overflow-hidden">
                 <table className="w-full text-left border-collapse responsive-table">
                     <thead>
                         <tr className="border-b border-neutral-900 bg-white/5">
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Cliente</th>
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Trabajo</th>
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Costo</th>
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Precio Venta</th>
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Margen</th>
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Estado</th>
-                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-neutral-500">Fecha</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Cliente</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Trabajo</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Costo</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Precio Venta</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Margen</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Estado</th>
+                            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Fecha</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-900">
@@ -619,8 +619,8 @@ function BudgetsPage() {
                                     <td className="p-5" data-label="Margen">
                                         <span className={cn(
                                             "text-xs font-black",
-                                            b.marginPercent >= 30 ? 'text-green-500' :
-                                            b.marginPercent >= 10 ? 'text-brand-cyan' : 'text-yellow-500'
+                                            b.marginPercent >= 30 ? 'text-emerald-500' :
+                                            b.marginPercent >= 10 ? 'text-brand-cyan' : 'text-brand-cyan'
                                         )}>
                                             {fmtPct(b.marginPercent)}
                                         </span>
