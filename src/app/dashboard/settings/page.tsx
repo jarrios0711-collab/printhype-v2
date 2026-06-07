@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils'
 import Tooltip from '@/components/ui/Tooltip'
 import AppInstall from '@/components/AppInstall'
+import Modal from '@/components/ui/Modal'
 
 const AI_PROVIDERS = [
   { value: 'openai', label: 'OpenAI', defaultModel: 'gpt-4o-mini', defaultUrl: 'https://api.openai.com/v1' },
@@ -527,6 +528,9 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
     const [aiConfig, setAiConfig] = useState<any>({ provider: 'ollama', apiKey: '', model: 'gemma3:4b', baseUrl: 'http://localhost:11434' })
     const [aiSaving, setAiSaving] = useState(false)
     const [aiSaved, setAiSaved] = useState(false)
+    const [validationStatus, setValidationStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle')
+    const [validationMsg, setValidationMsg] = useState('')
+    const [showHelpModal, setShowHelpModal] = useState(false)
 
     useEffect(() => {
         fetch('/api/user/ai-config').then(r => r.json()).then(data => {
@@ -561,14 +565,66 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
         }
     }
 
+    const validateApiKey = async (key: string, provider: string) => {
+        if (!key) {
+            setValidationStatus('idle')
+            return
+        }
+        setValidationStatus('checking')
+        setValidationMsg('')
+        try {
+            const res = await fetch('/api/user/ai-config/validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider, apiKey: key, model: aiConfig.model })
+            })
+            const data = await res.json()
+            if (data.success) {
+                setValidationStatus('success')
+            } else {
+                setValidationStatus('error')
+                setValidationMsg(data.error || 'La API Key es inválida o no pudimos conectarnos.')
+            }
+        } catch (err: any) {
+            setValidationStatus('error')
+            setValidationMsg(err.message || 'Error de conexión.')
+        }
+    }
+
     const hasApiKey = aiConfig.provider === 'ollama' || (aiConfig.apiKey && aiConfig.apiKey.length > 5)
 
     if (!settings) return null;
 
     return (
         <div className="space-y-6">
+            {/* Empty API Key Banner (On-demand help for beginners) */}
+            {!hasApiKey && aiConfig.provider !== 'ollama' && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-3xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="space-y-1">
+                        <h4 className="text-sm font-black text-yellow-500 flex items-center gap-2">
+                            <AlertCircle size={16} /> Necesitamos configurar tu clave de IA para empezar
+                        </h4>
+                        <p className="text-xs text-neutral-400">
+                            Ingresá tu API Key abajo para habilitar el laboratorio de Inteligencia Artificial (Calculador de costos STL, optimización y más).
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => {
+                            const input = document.getElementById('ai-api-key-input')
+                            if (input) {
+                                input.focus()
+                                input.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                            }
+                        }}
+                        className="px-4 py-2 bg-yellow-500 text-black rounded-xl text-xs font-black hover:scale-105 active:scale-95 transition-all shadow-lg shadow-yellow-500/20 uppercase shrink-0"
+                    >
+                        Configurar ahora
+                    </button>
+                </div>
+            )}
+
             {/* AI Provider Config */}
-            <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-6">
+            <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center text-brand-orange border border-brand-orange/20">
@@ -589,7 +645,7 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                     </div>
                 </div>
 
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-[10px] font-bold text-neutral-500 uppercase">Proveedor</label>
                         <select
@@ -597,8 +653,10 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                             onChange={e => {
                                 const p = AI_PROVIDERS.find(x => x.value === e.target.value) || AI_PROVIDERS[3]
                                 setAiConfig({ ...aiConfig, provider: e.target.value, model: p.defaultModel, baseUrl: p.defaultUrl })
+                                setValidationStatus('idle')
+                                setValidationMsg('')
                             }}
-                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange appearance-none"
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange appearance-none cursor-pointer"
                         >
                             {AI_PROVIDERS.map(p => (
                                 <option key={p.value} value={p.value}>{p.label}</option>
@@ -619,26 +677,72 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                 </div>
 
                 {aiConfig.provider !== 'ollama' && (
-                    <div className="mt-4 space-y-2">
-                        <label className="text-[10px] font-bold text-neutral-500 uppercase">API Key</label>
-                        <input
-                            type="password"
-                            value={aiConfig.apiKey}
-                            onChange={e => setAiConfig({ ...aiConfig, apiKey: e.target.value })}
-                            placeholder="sk-... o tu API key"
-                            autoComplete="new-password"
-                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange font-mono"
-                        />
-                        <p className="text-[9px] text-neutral-600">Tu API key se guarda encriptada y solo la usa tu cuenta.</p>
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <label className="text-[10px] font-bold text-neutral-500 uppercase">API Key</label>
+                            <button
+                                type="button"
+                                onClick={() => setShowHelpModal(true)}
+                                className="text-[10px] font-bold text-brand-orange hover:underline uppercase tracking-wider flex items-center gap-1 transition-all"
+                            >
+                                ¿Cómo obtener mi API Key?
+                            </button>
+                        </div>
+                        <div className="relative">
+                            <input
+                                id="ai-api-key-input"
+                                type="password"
+                                value={aiConfig.apiKey}
+                                onChange={e => {
+                                    const val = e.target.value
+                                    setAiConfig({ ...aiConfig, apiKey: val })
+                                    validateApiKey(val, aiConfig.provider)
+                                }}
+                                placeholder="sk-... o tu API key"
+                                autoComplete="new-password"
+                                className={cn(
+                                    "w-full bg-neutral-900 border rounded-xl px-4 py-3 text-sm text-white outline-none font-mono transition-colors",
+                                    validationStatus === 'success' ? "border-green-500/50 focus:border-green-500" :
+                                    validationStatus === 'error' ? "border-red-500/50 focus:border-red-500" :
+                                    validationStatus === 'checking' ? "border-brand-cyan/50 focus:border-brand-cyan" :
+                                    "border-neutral-800 focus:border-brand-orange"
+                                )}
+                            />
+                            {/* Live status indicators inside the input area */}
+                            <div className="absolute right-4 top-3.5 flex items-center gap-1.5 pointer-events-none">
+                                {validationStatus === 'checking' && (
+                                    <span className="text-[10px] text-brand-cyan font-bold uppercase flex items-center gap-1">
+                                        <RefreshCcw size={12} className="animate-spin" /> Conectando...
+                                    </span>
+                                )}
+                                {validationStatus === 'success' && (
+                                    <span className="text-[10px] text-green-500 font-bold uppercase flex items-center gap-1">
+                                        <CheckCircle2 size={12} /> Éxito
+                                    </span>
+                                )}
+                                {validationStatus === 'error' && (
+                                    <span className="text-[10px] text-red-500 font-bold uppercase flex items-center gap-1">
+                                        <XCircle size={12} /> Error
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        {validationStatus === 'error' && validationMsg && (
+                            <p className="text-[10px] text-red-400 mt-1 flex items-start gap-1">
+                                <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                                {validationMsg}
+                            </p>
+                        )}
+                        <p className="text-[9px] text-neutral-600">Tu API key se guarda de forma segura e independiente en el servidor para tu cuenta de usuario.</p>
                     </div>
                 )}
 
-                <div className="mt-4">
+                <div className="flex gap-2">
                     <Tooltip content="Guardar la configuración del proveedor de IA seleccionado">
                         <button
                             onClick={handleSaveAi}
-                            disabled={aiSaving}
-                            className="px-6 py-2.5 bg-brand-orange text-black rounded-xl text-xs font-black hover:scale-105 transition-all shadow-lg shadow-brand-orange/20 disabled:opacity-50 flex items-center gap-2"
+                            disabled={aiSaving || validationStatus === 'checking'}
+                            className="px-6 py-2.5 bg-brand-orange text-black rounded-xl text-xs font-black hover:scale-105 active:scale-95 transition-all shadow-lg shadow-brand-orange/20 disabled:opacity-50 flex items-center gap-2"
                         >
                             {aiSaving ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />}
                             {aiSaved ? 'GUARDADO ✓' : 'GUARDAR CONFIGURACIÓN IA'}
@@ -646,6 +750,54 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                     </Tooltip>
                 </div>
             </div>
+
+            {/* Step-by-Step Helpful Modal */}
+            <Modal
+                isOpen={showHelpModal}
+                onClose={() => setShowHelpModal(false)}
+                title="Cómo obtener tu API Key"
+            >
+                <div className="space-y-6">
+                    <p className="text-neutral-400 text-sm leading-relaxed">
+                        Para habilitar la IA en tu panel de PrintHype, te recomendamos usar <span className="text-white font-bold">OpenRouter</span>. Funciona como un agregador que te da acceso a decenas de modelos líderes (Gemini, Claude, GPT-4) pagando solo por consumo mínimo.
+                    </p>
+
+                    <div className="space-y-4 border-l-2 border-brand-orange/30 pl-4 py-1">
+                        <div className="relative">
+                            <span className="absolute -left-[25px] top-0.5 w-4 h-4 rounded-full bg-brand-orange text-black text-[10px] font-black flex items-center justify-center">1</span>
+                            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Crear cuenta</h4>
+                            <p className="text-xs text-neutral-400 mt-0.5">Ingresá a <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline font-bold">openrouter.ai</a> y registrate con tu cuenta de Google o email.</p>
+                        </div>
+
+                        <div className="relative">
+                            <span className="absolute -left-[25px] top-0.5 w-4 h-4 rounded-full bg-brand-orange text-black text-[10px] font-black flex items-center justify-center">2</span>
+                            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Cargar saldo mínimo</h4>
+                            <p className="text-xs text-neutral-400 mt-0.5">Ve a tu perfil (Settings → Billing) y recargá un saldo inicial (el consumo por análisis de archivo es de centavos de dólar).</p>
+                        </div>
+
+                        <div className="relative">
+                            <span className="absolute -left-[25px] top-0.5 w-4 h-4 rounded-full bg-brand-orange text-black text-[10px] font-black flex items-center justify-center">3</span>
+                            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Generar API Key</h4>
+                            <p className="text-xs text-neutral-400 mt-0.5">Ve a la pestaña <span className="text-white font-semibold">Keys</span> y presiona <span className="text-white font-semibold">"Create Key"</span>. Ponle un nombre descriptivo (ej: PrintHype) y copiala de inmediato.</p>
+                        </div>
+
+                        <div className="relative">
+                            <span className="absolute -left-[25px] top-0.5 w-4 h-4 rounded-full bg-brand-orange text-black text-[10px] font-black flex items-center justify-center">4</span>
+                            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Pegar en Ajustes</h4>
+                            <p className="text-xs text-neutral-400 mt-0.5">Pegá la clave generada en el formulario de API Key en esta misma sección. Validaremos la clave automáticamente y podrás empezar a usar la IA.</p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                        <button
+                            onClick={() => setShowHelpModal(false)}
+                            className="px-5 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold hover:text-white transition-all text-neutral-400 tap-target"
+                        >
+                            ENTENDIDO
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Webhook Config (global del taller) */}
             <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-6">
