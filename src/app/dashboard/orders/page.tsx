@@ -16,7 +16,8 @@ import {
     Package,
     FileSpreadsheet,
     Activity,
-    AlertTriangle
+    AlertTriangle,
+    Trash2
 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
@@ -180,6 +181,29 @@ function OrdersPage() {
             showToast('Error de conexión', 'error')
         } finally {
             setIsSaving(false)
+        }
+    }
+
+    const handleDeleteOrder = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (!confirm('¿Estás seguro de que querés eliminar este pedido?')) return
+
+        try {
+            const userWebhook = localStorage.getItem('ph_user_webhook') || ''
+            const res = await fetch(`/api/orders/${id}`, {
+                method: 'DELETE',
+                headers: { ...(userWebhook ? { 'x-webhook-url': userWebhook } : {}) }
+            })
+            const data = await res.json()
+            if (!data.error) {
+                fetchOrders()
+                showToast('Pedido eliminado correctamente', 'success')
+            } else {
+                showToast(data.error || 'Error al eliminar el pedido', 'error')
+            }
+        } catch (err) {
+            console.error('Error deleting order:', err)
+            showToast('Error de conexión', 'error')
         }
     }
 
@@ -485,10 +509,19 @@ function OrdersPage() {
                                             <Tooltip content="Ver detalles del pedido">
                                                 <Link
                                                     href={`/dashboard/orders/${order.id}`}
-                                                    className="text-[10px] font-black text-brand-orange hover:text-white transition-all flex items-center justify-end gap-1"
+                                                    className="text-[10px] font-black text-brand-orange hover:text-white transition-all flex items-center justify-end gap-1 px-1"
                                                 >
                                                     VER <ChevronRight size={10} />
                                                 </Link>
+                                            </Tooltip>
+                                            <Tooltip content="Eliminar pedido">
+                                                <button
+                                                    onClick={(e) => handleDeleteOrder(order.id, e)}
+                                                    className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-all ml-1"
+                                                    title="Eliminar Pedido"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
                                             </Tooltip>
                                         </div>
                                     </td>

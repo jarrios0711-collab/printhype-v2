@@ -124,3 +124,39 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Error al actualizar pedido' }, { status: 500 })
   }
 }
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const supabase = getServiceClient()
+    const { id } = await params
+    const userWebhook = req.headers.get('x-webhook-url') || undefined
+
+    const { data: order } = await supabase
+      .from('order_registry')
+      .select('customer_name, item_reference')
+      .eq('id', id)
+      .single()
+
+    const { error } = await supabase
+      .from('order_registry')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+
+    if (order) {
+      triggerWebhook(
+        'order.deleted',
+        'Pedido Eliminado',
+        `Pedido de ${order.customer_name} (${order.item_reference}) eliminado`,
+        { orderId: id, customerName: order.customer_name, projectName: order.item_reference },
+        userWebhook
+      )
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('DELETE /api/orders/[id] error:', error)
+    return NextResponse.json({ error: 'Error al eliminar el pedido' }, { status: 500 })
+  }
+}
