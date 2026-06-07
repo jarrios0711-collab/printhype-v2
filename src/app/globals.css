@@ -11,7 +11,7 @@
 body {
     color: rgb(var(--foreground-rgb));
     background-color: #050505;
-    background-image: linear-gradient(rgba(5, 5, 5, 0.75), rgba(5, 5, 5, 0.75)), url('/printer_bg.png');
+    background-image: linear-gradient(rgba(5, 5, 5, 0.80), rgba(5, 5, 5, 0.80)), url('/printer_bg.png');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -21,17 +21,17 @@ body {
 
 @layer utilities {
     .glass-card {
-        background: rgba(18, 18, 18, 0.7);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        background: rgba(10, 10, 10, 0.85);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
     }
     .glass-card-hover {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .glass-card-hover:hover {
-        background: rgba(24, 24, 24, 0.85);
+        background: rgba(20, 20, 20, 0.95);
         border-color: rgba(255, 102, 0, 0.25);
         box-shadow: 0 8px 32px 0 rgba(255, 102, 0, 0.08);
         transform: translateY(-2px);
