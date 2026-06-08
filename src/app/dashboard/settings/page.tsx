@@ -26,12 +26,72 @@ import AppInstall from '@/components/AppInstall'
 import Modal from '@/components/ui/Modal'
 
 const AI_PROVIDERS = [
-  { value: 'openai', label: 'OpenAI', defaultModel: 'gpt-4o-mini', defaultUrl: 'https://api.openai.com/v1' },
-  { value: 'groq', label: 'Groq (gratis rápido)', defaultModel: 'llama-3.3-70b-versatile', defaultUrl: 'https://api.groq.com/openai/v1' },
-  { value: 'gemini', label: 'Gemini (Google)', defaultModel: 'gemini-2.0-flash', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta' },
-  { value: 'deepseek', label: 'DeepSeek', defaultModel: 'deepseek-chat', defaultUrl: 'https://api.deepseek.com/v1' },
-  { value: 'ollama', label: 'Ollama (local)', defaultModel: 'gemma3:4b', defaultUrl: 'http://localhost:11434' },
-  { value: 'openrouter', label: 'OpenRouter', defaultModel: 'google/gemini-2.0-flash-001', defaultUrl: 'https://openrouter.ai/api/v1' },
+  { 
+    value: 'openai', 
+    label: 'OpenAI', 
+    defaultModel: 'gpt-4o-mini', 
+    defaultUrl: 'https://api.openai.com/v1',
+    models: [
+      { value: 'gpt-4o-mini', label: 'GPT-4o Mini (Veloz y económico)' },
+      { value: 'gpt-4o', label: 'GPT-4o (Máximo razonamiento)' }
+    ]
+  },
+  { 
+    value: 'groq', 
+    label: 'Groq (gratis rápido)', 
+    defaultModel: 'llama-3.3-70b-versatile', 
+    defaultUrl: 'https://api.groq.com/openai/v1',
+    models: [
+      { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Balanceado)' },
+      { value: 'llama3-8b-8192', label: 'Llama 3 8B (Súper veloz)' },
+      { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' }
+    ]
+  },
+  { 
+    value: 'gemini', 
+    label: 'Gemini (Google)', 
+    defaultModel: 'gemini-2.0-flash', 
+    defaultUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    models: [
+      { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Recomendado)' },
+      { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (Complejo)' }
+    ]
+  },
+  { 
+    value: 'deepseek', 
+    label: 'DeepSeek', 
+    defaultModel: 'deepseek-chat', 
+    defaultUrl: 'https://api.deepseek.com/v1',
+    models: [
+      { value: 'deepseek-chat', label: 'DeepSeek Chat v3' },
+      { value: 'deepseek-coder', label: 'DeepSeek Coder' }
+    ]
+  },
+  { 
+    value: 'ollama', 
+    label: 'Ollama (local)', 
+    defaultModel: 'gemma3:4b', 
+    defaultUrl: 'http://localhost:11434',
+    models: [
+      { value: 'gemma3:4b', label: 'Gemma 3 4B' },
+      { value: 'llama3:8b', label: 'Llama 3 8B' },
+      { value: 'mistral:latest', label: 'Mistral 7B' },
+      { value: 'custom', label: 'Escribir modelo personalizado...' }
+    ]
+  },
+  { 
+    value: 'openrouter', 
+    label: 'OpenRouter', 
+    defaultModel: 'google/gemini-2.0-flash-001', 
+    defaultUrl: 'https://openrouter.ai/api/v1',
+    models: [
+      { value: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash (Recomendado)' },
+      { value: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B (Veloz y económico)' },
+      { value: 'deepseek/deepseek-chat', label: 'DeepSeek Chat v3 (Excelente y económico)' },
+      { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet (Inteligencia SOTA)' },
+      { value: 'custom', label: 'Escribir modelo personalizado...' }
+    ]
+  },
 ]
 
 type Tab = 'taller' | 'finanzas' | 'conectividad'
@@ -664,15 +724,47 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                         </select>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-neutral-500 uppercase">Modelo</label>
-                        <input
-                            type="text"
-                            value={aiConfig.model}
-                            onChange={e => setAiConfig({ ...aiConfig, model: e.target.value })}
-                            placeholder={providerMeta.defaultModel}
-                            autoComplete="off"
-                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange"
-                        />
+                        <label className="text-[10px] font-bold text-neutral-500 uppercase">Modelo / Agente</label>
+                        {(() => {
+                            const availableModels = providerMeta.models || []
+                            const isPredefined = availableModels.some(m => m.value === aiConfig.model)
+                            const isCustomMode = aiConfig.model === 'custom' || (!isPredefined && aiConfig.model !== '')
+
+                            return (
+                                <div className="space-y-2">
+                                    <select
+                                        value={isCustomMode ? 'custom' : aiConfig.model}
+                                        onChange={e => {
+                                            const val = e.target.value
+                                            if (val === 'custom') {
+                                                setAiConfig({ ...aiConfig, model: '' })
+                                            } else {
+                                                setAiConfig({ ...aiConfig, model: val })
+                                            }
+                                        }}
+                                        className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange appearance-none cursor-pointer"
+                                    >
+                                        {availableModels.map(m => (
+                                            <option key={m.value} value={m.value}>{m.label}</option>
+                                        ))}
+                                        {!availableModels.some(m => m.value === 'custom') && (
+                                            <option value="custom">Escribir modelo personalizado...</option>
+                                        )}
+                                    </select>
+                                    
+                                    {isCustomMode && (
+                                        <input
+                                            type="text"
+                                            value={aiConfig.model === 'custom' ? '' : aiConfig.model}
+                                            onChange={e => setAiConfig({ ...aiConfig, model: e.target.value })}
+                                            placeholder="Ej: anthropic/claude-3-opus"
+                                            autoComplete="off"
+                                            className="w-full bg-neutral-900 border border-neutral-850 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange animate-in slide-in-from-top-1 duration-200"
+                                        />
+                                    )}
+                                </div>
+                            )
+                        })()}
                     </div>
                 </div>
 
