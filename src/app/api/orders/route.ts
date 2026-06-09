@@ -74,6 +74,29 @@ export async function POST(req: Request) {
 
     if (error) throw error
 
+    // Crear proyecto correspondiente en el tablero Kanban
+    try {
+      const priorityMap: Record<string, 'low' | 'medium' | 'high'> = {
+        'NORMAL': 'medium',
+        'HIGH': 'high',
+        'URGENT': 'high'
+      }
+      const projectPriority = priorityMap[parsed.priority] || 'medium'
+
+      await supabase
+        .from('project_board')
+        .insert([{
+          title: parsed.projectName,
+          client: parsed.customerName,
+          priority: projectPriority,
+          status: 'ready',
+          due_date: parsed.deliveryDate || null,
+          progress: 0,
+        }])
+    } catch (projectErr) {
+      console.error('Error al crear proyecto desde pedido:', projectErr)
+    }
+
     // Descontar stock del inventario si hay material y peso
     if (parsed.materialId && parsed.weightGrams && parsed.weightGrams > 0 && data && data[0]) {
       try {
