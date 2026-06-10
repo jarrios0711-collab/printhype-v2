@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { X, Download } from 'lucide-react'
 
 export default function PwaRegister() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [show, setShow] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     // Don't show if already installed
@@ -37,7 +39,8 @@ export default function PwaRegister() {
     setDeferredPrompt(null)
   }
 
-  if (!show) return null
+  const isPublicPage = pathname === '/' || pathname === '/login' || pathname?.startsWith('/login')
+  if (!show || isPublicPage) return null
 
   return (
     <div className="fixed bottom-20 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 sm:max-w-sm">
