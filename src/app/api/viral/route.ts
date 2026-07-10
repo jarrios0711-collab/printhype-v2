@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getServiceClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 
 const CampaignSchema = z.object({
@@ -12,10 +11,16 @@ const CampaignSchema = z.object({
 
 export async function GET() {
   try {
-    const admin = getServiceClient()
-    const { data: campaigns, error } = await admin
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const { data: campaigns, error } = await supabase
       .from('viral_campaigns')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -39,16 +44,18 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
 
     const body = await req.json()
     const parsed = CampaignSchema.parse(body)
 
-    const admin = getServiceClient()
-    const { data, error } = await admin
+    const { data, error } = await supabase
       .from('viral_campaigns')
       .insert([{
-        user_id: user?.id || null,
+        user_id: user.id,
         title: parsed.title,
         platform: parsed.platform,
         status: parsed.status,

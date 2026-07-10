@@ -1,3 +1,5 @@
+import { calcOrderCosts, calcMargin } from '@/lib/utils'
+
 export interface OrderForInvoice {
     id: string
     customerName: string
@@ -23,25 +25,9 @@ export interface SettingsForInvoice {
     currency?: string
 }
 
-function calcCosts(order: OrderForInvoice, settings?: SettingsForInvoice | null) {
-    const material = order.weightGrams
-        ? Math.round(order.weightGrams * 1.24 * 0.025)
-        : 0
-    const energy = settings?.kwhPrice
-        ? Math.round(settings.kwhPrice * 3.5)
-        : 420
-    const labor = settings?.laborHourPrice
-        ? Math.round(settings.laborHourPrice)
-        : 800
-    const totalCost = material + energy + labor
-    const margin = order.totalPrice > 0 && totalCost > 0
-        ? ((order.totalPrice - totalCost) / order.totalPrice * 100).toFixed(1)
-        : '0.0'
-    return { material, energy, labor, totalCost, margin }
-}
-
 export function generateInvoiceHtml(order: OrderForInvoice, settings?: SettingsForInvoice | null): string {
-    const costs = calcCosts(order, settings)
+    const costs = calcOrderCosts(order.weightGrams, settings?.kwhPrice, settings?.laborHourPrice)
+    const margin = calcMargin(order.totalPrice, costs.totalCost)
     const date = new Date(order.createdAt).toLocaleDateString('es-AR', {
         year: 'numeric', month: 'long', day: 'numeric',
     })
@@ -177,7 +163,7 @@ export function generateInvoiceHtml(order: OrderForInvoice, settings?: SettingsF
     </div>
     <div class="margin">
       <span class="label">Margen Neto</span>
-      <span class="value">${costs.margin}%</span>
+      <span class="value">${margin}%</span>
     </div>
   </div>
 

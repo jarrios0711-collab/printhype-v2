@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getServiceClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const UpdateSchema = z.object({
@@ -16,6 +16,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
     const body = await req.json()
     const parsed = UpdateSchema.parse(body)
@@ -28,11 +34,11 @@ export async function PATCH(
     if (parsed.stock_units !== undefined) updateData.stock_units = parsed.stock_units
     if (parsed.pricePerKg !== undefined) updateData.unit_price = parsed.pricePerKg
 
-    const admin = getServiceClient()
-    const { data, error } = await admin
+    const { data, error } = await supabase
       .from('inventory_items')
       .update(updateData)
       .eq('id', id)
+      .eq('user_id', user.id)
       .select()
       .single()
 
@@ -64,12 +70,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
-    const admin = getServiceClient()
-    const { error } = await admin
+    const { error } = await supabase
       .from('inventory_items')
       .delete()
       .eq('id', id)
+      .eq('user_id', user.id)
 
     if (error) throw error
 

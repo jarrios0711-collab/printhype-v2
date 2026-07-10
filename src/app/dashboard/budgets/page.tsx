@@ -17,7 +17,8 @@ import {
     Percent,
     Zap,
     BrainCircuit,
-    RefreshCw
+    RefreshCw,
+    Search
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
@@ -176,6 +177,7 @@ function BudgetsPage() {
     const [editingBudget, setEditingBudget] = useState<Budget | null>(null)
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'STL' | 'MANUAL'>('MANUAL')
+    const [searchQuery, setSearchQuery] = useState('')
 
     // AI suggestion state
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null)
@@ -549,6 +551,16 @@ function BudgetsPage() {
                         <Plus size={16} /> NUEVO PRESUPUESTO
                     </button>
                 </Tooltip>
+                <div className="relative w-full sm:w-64">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                    <input
+                        type="text"
+                        placeholder="Buscar por cliente o proyecto..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange transition-colors"
+                    />
+                </div>
             </div>
 
             {/* Stats */}
@@ -568,10 +580,10 @@ function BudgetsPage() {
             </div>
 
             {/* Budgets Table */}
-            <div className="glass-card rounded-3xl overflow-hidden">
+            <div className="glass-card rounded-3xl overflow-x-auto">
                 <table className="w-full text-left border-collapse responsive-table">
                     <thead>
-                        <tr className="border-b border-neutral-900 bg-white/5">
+                        <tr className="border-b border-neutral-900 bg-neutral-950 sticky top-0 z-10">
                             <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Cliente</th>
                             <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Trabajo</th>
                             <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Costo</th>
@@ -598,7 +610,14 @@ function BudgetsPage() {
                                 </td>
                             </tr>
                         ) : (
-                            budgets.map((b) => (
+                            budgets
+                                .filter(b => {
+                                    if (!searchQuery) return true
+                                    const q = searchQuery.toLowerCase()
+                                    return (b.clientName || '').toLowerCase().includes(q)
+                                        || (b.jobName || '').toLowerCase().includes(q)
+                                })
+                                .map((b) => (
                                 <tr
                                     key={b.id}
                                     onClick={() => openEdit(b)}

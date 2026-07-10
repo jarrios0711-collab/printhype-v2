@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { getServiceClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 import { triggerWebhook } from '@/lib/webhook'
@@ -9,9 +10,19 @@ const StatusUpdateSchema = z.object({
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = getServiceClient()
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
-    const { data: p, error } = await supabase.from('order_registry').select('*').eq('id', id).single()
+    const { data: p, error } = await supabase
+      .from('order_registry')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
 
     if (error) {
       if (error.code === 'PGRST116') {
@@ -41,23 +52,30 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const body = await req.json()
     const { status } = StatusUpdateSchema.parse(body)
     const userWebhook = req.headers.get('x-webhook-url') || undefined
 
-    const supabase = getServiceClient()
     const { id: orderId } = await params
 
     const { data: order, error: fetchError } = await supabase
       .from('order_registry')
       .select('*')
       .eq('id', orderId)
+      .eq('user_id', user.id)
       .single()
 
     if (fetchError) throw fetchError
 
+    const admin = getServiceClient()
     if (status === 'COMPLETED' && !order.stock_deducted && order.inventory_id && order.units_consumed) {
-      const { data: inventory } = await supabase
+      const { data: inventory } = await admin
         .from('inventory_items')
         .select('stock_units')
         .eq('id', order.inventory_id)
@@ -65,18 +83,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       if (inventory) {
         const newStock = (inventory.stock_units || 0) - order.units_consumed
-        await supabase
+        await admin
           .from('inventory_items')
           .update({ stock_units: Math.max(0, newStock) })
           .eq('id', order.inventory_id)
       }
 
-      await supabase
+      await admin
         .from('order_registry')
         .update({ status, stock_deducted: true })
         .eq('id', orderId)
     } else {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await admin
         .from('order_registry')
         .update({ status })
         .eq('id', orderId)
@@ -84,7 +102,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (updateError) throw updateError
     }
 
-    const { data: u, error: finalError } = await supabase
+    const { data: u, error: finalError } = await admin
       .from('order_registry')
       .select('*')
       .eq('id', orderId)
@@ -127,20 +145,28 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = getServiceClient()
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
     const userWebhook = req.headers.get('x-webhook-url') || undefined
 
-    const { data: order } = await supabase
+    const admin = getServiceClient()
+    const { data: order } = await admin
       .from('order_registry')
       .select('customer_name, item_reference')
       .eq('id', id)
+      .eq('user_id', user.id)
       .single()
 
-    const { error } = await supabase
+    const { error } = await admin
       .from('order_registry')
       .delete()
       .eq('id', id)
+      .eq('user_id', user.id)
 
     if (error) throw error
 

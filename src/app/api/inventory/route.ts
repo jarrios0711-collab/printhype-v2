@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getServiceClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { triggerWebhook } from '@/lib/webhook'
 
@@ -14,10 +14,16 @@ const MaterialSchema = z.object({
 
 export async function GET() {
   try {
-    const supabase = getServiceClient()
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { data: items, error } = await supabase
       .from('inventory_items')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -42,11 +48,16 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const body = await req.json()
     const parsed = MaterialSchema.parse(body)
     const userWebhook = req.headers.get('x-webhook-url') || undefined
 
-    const supabase = getServiceClient()
     const { data, error } = await supabase
       .from('inventory_items')
       .insert([{
@@ -57,6 +68,7 @@ export async function POST(req: Request) {
         unit_price: parsed.pricePerKg,
         brand: parsed.brand,
         color: parsed.color,
+        user_id: user.id,
       }])
       .select()
 

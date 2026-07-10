@@ -21,22 +21,12 @@ import {
 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
-import { cn } from '@/lib/utils'
+import { cn, getWaUrl, formatCurrency } from '@/lib/utils'
 import { Dictionary } from '@/config/dictionary'
-import { paginate, exportToCSV, formatCurrency } from '@/lib/pagination'
+import { paginate, exportToCSV } from '@/lib/pagination'
 import Tooltip from '@/components/ui/Tooltip'
 
 const ITEMS_PER_PAGE = 20
-
-const getWaUrl = (phone: string, name: string, project: string) => {
-    if (!phone) return '#'
-    let c = phone.replace(/\D/g, '')
-    if (c.startsWith('0')) c = c.substring(1)
-    if (!c.startsWith('549') && !c.startsWith('54') && c.length === 10) c = '549' + c
-    if (c.startsWith('54') && !c.startsWith('549')) c = '549' + c.substring(2)
-    const msg = `Hola ${name}, te contacto de JR3D sobre tu pedido de ${project}.`
-    return `https://wa.me/${c}?text=${encodeURIComponent(msg)}`
-}
 
 function OrdersPage() {
     const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false)
@@ -62,6 +52,8 @@ function OrdersPage() {
 
     const [searchQuery, setSearchQuery] = useState('')
     const [statusFilter, setStatusFilter] = useState<string>('')
+    const [dateFrom, setDateFrom] = useState('')
+    const [dateTo, setDateTo] = useState('')
     const [currentPage, setCurrentPage] = useState(1)
     const [showExportMenu, setShowExportMenu] = useState(false)
 
@@ -83,8 +75,19 @@ function OrdersPage() {
             result = result.filter(o => o.status === statusFilter)
         }
 
+        if (dateFrom) {
+            const from = new Date(dateFrom)
+            result = result.filter(o => new Date(o.createdAt) >= from)
+        }
+
+        if (dateTo) {
+            const to = new Date(dateTo)
+            to.setDate(to.getDate() + 1)
+            result = result.filter(o => new Date(o.createdAt) <= to)
+        }
+
         return result
-    }, [orders, searchQuery, statusFilter])
+    }, [orders, searchQuery, statusFilter, dateFrom, dateTo])
 
     const fetchMaterials = async () => {
         try {
@@ -355,12 +358,28 @@ function OrdersPage() {
                         <option value="COMPLETED">Completados</option>
                     </select>
                 </Tooltip>
+                <Tooltip content="Filtrar desde fecha">
+                    <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1) }}
+                        className="px-3 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold appearance-none focus:outline-none focus:border-brand-orange/50 text-neutral-400 cursor-pointer tap-target w-36"
+                    />
+                </Tooltip>
+                <Tooltip content="Filtrar hasta fecha">
+                    <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1) }}
+                        className="px-3 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold appearance-none focus:outline-none focus:border-brand-orange/50 text-neutral-400 cursor-pointer tap-target w-36"
+                    />
+                </Tooltip>
             </div>
 
-            <div className="glass-card rounded-3xl overflow-hidden">
+            <div className="glass-card rounded-3xl overflow-x-auto">
                 <table className="w-full text-left border-collapse responsive-table">
                     <thead>
-                        <tr className="border-b border-neutral-900 bg-white/5">
+                        <tr className="border-b border-neutral-900 bg-neutral-950 sticky top-0 z-10">
                             <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">ID Orden</th>
                             <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Cliente</th>
                             <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Items</th>

@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { provider, apiKey, model } = await req.json()
 
-    if (!apiKey) {
+    if (!apiKey && provider !== 'ollama') {
       return NextResponse.json({ error: 'La API Key está vacía' }, { status: 400 })
     }
 
@@ -14,7 +21,6 @@ export async function POST(req: Request) {
       'Content-Type': 'application/json',
     }
 
-    // Si es otro proveedor, podemos hacer un test rápido de modelos o similar
     if (provider === 'openai') {
       url = 'https://api.openai.com/v1/models'
     } else if (provider === 'groq') {
@@ -34,7 +40,7 @@ export async function POST(req: Request) {
     const timeoutId = setTimeout(() => controller.abort(), 6000)
 
     const res = await fetch(url, {
-      method: provider === 'openrouter' ? 'GET' : 'GET',
+      method: 'GET',
       headers,
       signal: controller.signal
     })

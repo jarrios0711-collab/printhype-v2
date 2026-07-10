@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { getServiceClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
@@ -31,11 +30,11 @@ export async function PATCH(
     if (parsed.status !== undefined) updateData.status = parsed.status
     if (parsed.contentIdea !== undefined) updateData.content_idea = parsed.contentIdea
 
-    const admin = getServiceClient()
-    const { data, error } = await admin
+    const { data, error } = await supabase
       .from('viral_campaigns')
       .update(updateData)
       .eq('id', id)
+      .eq('user_id', user.id)
       .select()
       .single()
 
@@ -75,11 +74,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const admin = getServiceClient()
-    const { error } = await admin
+    const { error } = await supabase
       .from('viral_campaigns')
       .delete()
       .eq('id', id)
+      .eq('user_id', user.id)
 
     if (error) throw error
 

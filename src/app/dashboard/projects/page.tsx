@@ -32,7 +32,10 @@ import {
   Layers,
   Zap,
   CheckCircle,
-  MoreVertical
+  MoreVertical,
+  Edit3,
+  Copy,
+  Trash2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
@@ -74,6 +77,10 @@ export default function ProjectsPage() {
   const [formData, setFormData] = useState({
     title: '', client: '', priority: 'medium', dueDate: ''
   })
+
+  const [filterPriority, setFilterPriority] = useState<string>('all')
+  const [filterClient, setFilterClient] = useState<string>('')
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
 
   const handleAddProject = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -209,8 +216,15 @@ export default function ProjectsPage() {
         <div className="flex gap-2">
             <div className="flex gap-2">
                 <Tooltip content="Filtrar proyectos">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold text-neutral-400 hover:text-white transition-all tap-target">
-                        <Settings2 size={14} /> Filtros
+                    <button
+                        onClick={() => setIsFilterModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold text-neutral-400 hover:text-white transition-all tap-target"
+                    >
+                        <Settings2 size={14} />
+                        {(filterPriority !== 'all' || filterClient) ? (
+                            <span className="w-2 h-2 bg-brand-orange rounded-full" />
+                        ) : null}
+                        Filtros
                     </button>
                 </Tooltip>
                 <Tooltip content="Crear nuevo proyecto">
@@ -270,7 +284,12 @@ export default function ProjectsPage() {
               <KanbanColumn 
                 key={col.id} 
                 column={col} 
-                projects={projects.filter(p => p.status === col.id)} 
+                projects={projects.filter(p => {
+                  const statusMatch = p.status === col.id
+                  const priorityMatch = filterPriority === 'all' || p.priority === filterPriority
+                  const clientMatch = !filterClient || (p.client || '').toLowerCase().includes(filterClient.toLowerCase())
+                  return statusMatch && priorityMatch && clientMatch
+                })} 
               />
             ))}
           </div>
@@ -289,6 +308,49 @@ export default function ProjectsPage() {
             ) : null}
           </DragOverlay>
         </DndContext>
+
+        {/* Modal de filtros */}
+        <Modal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} title="Filtrar Proyectos">
+          <div className="space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-widest">Prioridad</label>
+              <select
+                value={filterPriority}
+                onChange={(e) => setFilterPriority(e.target.value)}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange"
+              >
+                <option value="all">Todas</option>
+                <option value="low">Baja</option>
+                <option value="medium">Media</option>
+                <option value="high">Alta</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-widest">Cliente</label>
+              <input
+                type="text"
+                value={filterClient}
+                onChange={(e) => setFilterClient(e.target.value)}
+                placeholder="Buscar por cliente..."
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange placeholder:text-neutral-600"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setFilterPriority('all'); setFilterClient(''); setIsFilterModalOpen(false) }}
+                className="flex-1 py-3 border border-neutral-800 rounded-xl text-xs font-bold text-neutral-400 hover:text-white transition-all"
+              >
+                Limpiar filtros
+              </button>
+              <button
+                onClick={() => setIsFilterModalOpen(false)}
+                className="flex-1 py-3 bg-brand-orange text-black rounded-xl text-xs font-black hover:scale-105 transition-all"
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </div>
   )
@@ -329,6 +391,15 @@ function KanbanColumn({ column, projects }: { column: Column, projects: Project[
 }
 
 function ProjectCard({ project, isOverlay }: { project: Project, isOverlay?: boolean }) {
+  const [projectMenuOpen, setProjectMenuOpen] = useState<string | null>(null)
+
+  // Cerrar menú contextual al hacer clic fuera
+  useEffect(() => {
+    const handler = () => setProjectMenuOpen(null)
+    if (projectMenuOpen) document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [projectMenuOpen])
+
   const {
     setNodeRef,
     attributes,
@@ -371,11 +442,59 @@ function ProjectCard({ project, isOverlay }: { project: Project, isOverlay?: boo
         <span className="text-[10px] font-black uppercase text-brand-orange tracking-wider bg-brand-orange/10 px-2 py-0.5 rounded-sm">
           {project.client ?? 'JR3D'}
         </span>
-        <Tooltip content="Más opciones del proyecto">
-          <button className="text-neutral-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setProjectMenuOpen(project.id === projectMenuOpen ? null : project.id)
+            }}
+            className="text-neutral-500 hover:text-white"
+          >
             <MoreVertical size={14} />
           </button>
-        </Tooltip>
+          {projectMenuOpen === project.id && (
+            <div className="absolute right-0 top-6 z-50 w-40 bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl overflow-hidden">
+              <button
+                onClick={(e) => { e.stopPropagation(); /* edit */ setProjectMenuOpen(null) }}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-neutral-300 hover:bg-neutral-800 transition-colors"
+              >
+                <Edit3 size={12} /> Editar
+              </button>
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation()
+                  try {
+                    await fetch('/api/projects', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ title: project.title + ' (copia)', client: project.client, priority: project.priority, status: 'idea' })
+                    })
+                    window.location.reload()
+                  } catch (err) { console.error(err) }
+                  setProjectMenuOpen(null)
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-neutral-300 hover:bg-neutral-800 transition-colors"
+              >
+                <Copy size={12} /> Duplicar
+              </button>
+              <div className="h-px bg-neutral-800" />
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation()
+                  if (!confirm('¿Eliminar proyecto?')) return
+                  try {
+                    await fetch('/api/projects', { method: 'DELETE', body: JSON.stringify({ id: project.id }) })
+                    window.location.reload()
+                  } catch (err) { console.error(err) }
+                  setProjectMenuOpen(null)
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-red-500 hover:bg-neutral-800 transition-colors"
+              >
+                <Trash2 size={12} /> Eliminar
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <h3 className="font-bold text-white text-sm mb-1 leading-tight">{project.title}</h3>

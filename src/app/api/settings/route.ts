@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { getServiceClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 
@@ -13,8 +14,14 @@ const SettingsSchema = z.object({
 
 export async function GET() {
   try {
-    const supabase = getServiceClient()
-    const { data: settings, error } = await supabase
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const admin = getServiceClient()
+    const { data: settings, error } = await admin
       .from('ajustes')
       .select('*')
       .eq('id', 'global')
@@ -33,7 +40,7 @@ export async function GET() {
         webhook_url: '',
       }
 
-      const { data: newSettings } = await supabase
+      const { data: newSettings } = await admin
         .from('ajustes')
         .insert([defaults])
         .select()
@@ -69,11 +76,17 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const body = await req.json()
     const parsed = SettingsSchema.parse(body)
 
-    const supabase = getServiceClient()
-    const { data: settings, error } = await supabase
+    const admin = getServiceClient()
+    const { data: settings, error } = await admin
       .from('ajustes')
       .upsert({
         id: 'global',

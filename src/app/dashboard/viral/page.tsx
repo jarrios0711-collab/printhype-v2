@@ -241,33 +241,52 @@ export default function ViralPage() {
                 </div>
             )}
 
-            {/* Trends Section */}
+            {/* Trends Section — ahora dinámicos desde campañas reales */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                 <div className="p-8 bg-neutral-950/40 border border-neutral-900 rounded-3xl backdrop-blur-md relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 text-brand-orange/10 group-hover:text-brand-orange/20 transition-all">
                         <TrendingUp size={80} />
                     </div>
                     <div className="flex items-center gap-2 text-brand-orange text-[10px] font-black uppercase tracking-widest mb-4">
-                        <Flame size={14} className="animate-pulse" /> Trending Argentina
+                        <Flame size={14} className="animate-pulse" /> Plataforma Activa
                     </div>
-                    <h3 className="text-2xl font-black mb-2">#Copa2026</h3>
-                    <p className="text-neutral-500 text-xs">Crecimiento orgánico sugerido para productos de colección.</p>
+                    <h3 className="text-2xl font-black mb-2 truncate">
+                        {(() => {
+                            const platforms = campaigns.map(c => c.platform)
+                            const top = platforms.sort((a, b) =>
+                                platforms.filter(p => p === a).length - platforms.filter(p => p === b).length
+                            ).pop() || 'Instagram'
+                            return top
+                        })()}
+                    </h3>
+                    <p className="text-neutral-500 text-xs">
+                        {campaigns.filter(c => c.status === 'LIVE').length} campañas activas en esta plataforma.
+                    </p>
                 </div>
 
                 <div className="p-8 bg-neutral-950/40 border border-neutral-900 rounded-3xl backdrop-blur-md relative overflow-hidden group">
                     <div className="flex items-center gap-2 text-brand-cyan text-[10px] font-black uppercase tracking-widest mb-4">
-                        <Clock size={14} /> Mejor Horario
+                        <Clock size={14} /> Contenido Creado
                     </div>
-                    <h3 className="text-2xl font-black mb-2">19:45 ART</h3>
-                    <p className="text-neutral-500 text-xs">Pico de audiencia detectado en flujos de n8n.</p>
+                    <h3 className="text-2xl font-black mb-2">{campaigns.length}</h3>
+                    <p className="text-neutral-500 text-xs">
+                        {campaigns.filter(c => c.status === 'DRAFT').length} en borrador,{' '}
+                        {campaigns.filter(c => c.status === 'SCHEDULED').length} programadas,{' '}
+                        {campaigns.filter(c => c.status === 'LIVE').length} publicadas.
+                    </p>
                 </div>
 
                 <div className="p-8 bg-neutral-950/40 border border-neutral-900 rounded-3xl backdrop-blur-md relative overflow-hidden group">
                     <div className="flex items-center gap-2 text-green-500 text-[10px] font-black uppercase tracking-widest mb-4">
-                        <Share2 size={14} /> Conversión
+                        <Share2 size={14} /> Impacto Total
                     </div>
-                    <h3 className="text-2xl font-black mb-2">4.2%</h3>
-                    <p className="text-neutral-500 text-xs">Lead-to-Order desde WhatsApp bot.</p>
+                    <h3 className="text-2xl font-black mb-2">
+                        {campaigns.reduce((acc, c) => {
+                            const v = parseInt(String(c.views || '0'))
+                            return acc + (isNaN(v) ? 0 : v)
+                        }, 0).toLocaleString()}
+                    </h3>
+                    <p className="text-neutral-500 text-xs">Vistas acumuladas en todas las campañas.</p>
                 </div>
             </div>
 

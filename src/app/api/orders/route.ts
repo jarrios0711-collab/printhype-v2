@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { getServiceClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 import { triggerWebhook } from '@/lib/webhook'
@@ -16,10 +17,16 @@ const OrderSchema = z.object({
 
 export async function GET() {
   try {
-    const supabase = getServiceClient()
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { data: records, error } = await supabase
       .from('order_registry')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -52,12 +59,18 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const body = await req.json()
     const parsed = OrderSchema.parse(body)
     const userWebhook = req.headers.get('x-webhook-url') || undefined
 
-    const supabase = getServiceClient()
-    const { data, error } = await supabase
+    const admin = getServiceClient()
+    const { data, error } = await admin
       .from('order_registry')
       .insert([{
         customer_name: parsed.customerName,
@@ -69,6 +82,7 @@ export async function POST(req: Request) {
         inventory_id: parsed.materialId || null,
         units_consumed: parsed.weightGrams,
         delivery_date: parsed.deliveryDate || null,
+        user_id: user.id,
       }])
       .select()
 
@@ -83,7 +97,7 @@ export async function POST(req: Request) {
       }
       const projectPriority = priorityMap[parsed.priority] || 'medium'
 
-      await supabase
+      await admin
         .from('project_board')
         .insert([{
           title: parsed.projectName,
@@ -92,6 +106,7 @@ export async function POST(req: Request) {
           status: 'ready',
           due_date: parsed.deliveryDate || null,
           progress: 0,
+          user_id: user.id,
         }])
     } catch (projectErr) {
       console.error('Error al crear proyecto desde pedido:', projectErr)
@@ -100,7 +115,7 @@ export async function POST(req: Request) {
     // Descontar stock del inventario si hay material y peso
     if (parsed.materialId && parsed.weightGrams && parsed.weightGrams > 0 && data && data[0]) {
       try {
-        const { data: material, error: matError } = await supabase
+        const { data: material, error: matError } = await admin
           .from('inventory_items')
           .select('stock_units')
           .eq('id', parsed.materialId)
@@ -108,19 +123,18 @@ export async function POST(req: Request) {
 
         if (!matError && material) {
           const newStock = Math.max(0, (material.stock_units || 0) - parsed.weightGrams)
-          await supabase
+          await admin
             .from('inventory_items')
             .update({ stock_units: newStock })
             .eq('id', parsed.materialId)
 
           // Marcar la orden como stock descontado
-          await supabase
+          await admin
             .from('order_registry')
             .update({ stock_deducted: true })
             .eq('id', data[0].id)
         }
       } catch (stockErr) {
-        // No interrumpir el flujo si el descuento falla
         console.error('Error descontando stock:', stockErr)
       }
     }

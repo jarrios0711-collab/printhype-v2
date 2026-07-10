@@ -20,20 +20,10 @@ import {
   Loader2,
   BrainCircuit
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, getWaUrl, calcOrderCosts, calcMargin, formatCurrency } from '@/lib/utils'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import Tooltip from '@/components/ui/Tooltip'
 import { generateInvoiceHtml } from '@/lib/invoice'
-
-const getWaUrl = (phone: string, name: string, project: string) => {
-    if (!phone) return '#';
-    let c = phone.replace(/\D/g, '');
-    if (c.startsWith('0')) c = c.substring(1);
-    if (!c.startsWith('549') && !c.startsWith('54') && c.length === 10) c = '549' + c;
-    if (c.startsWith('54') && !c.startsWith('549')) c = '549' + c.substring(2);
-    const msg = `Hola ${name}, te contacto de JR3D sobre tu pedido de ${project}.`;
-    return `https://wa.me/${c}?text=${encodeURIComponent(msg)}`;
-}
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params)
@@ -121,33 +111,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     return eta.toLocaleDateString('es-AR', { weekday: 'long', hour: '2-digit', minute: '2-digit' })
   }
 
-  const calcCostMaterial = () => {
-    if (!order?.weightGrams) return 0
-    return Math.round(order.weightGrams * 1.24 * 0.025)
-  }
+  const orderCosts = calcOrderCosts(order?.weightGrams, settings?.kwhPrice, settings?.laborHourPrice)
+  const orderMargin = calcMargin(order?.totalPrice || 0, orderCosts.totalCost)
 
-  const calcCostEnergy = () => {
-    if (!settings?.kwhPrice) return 420
-    return Math.round(settings.kwhPrice * 3.5)
-  }
-
-  const calcCostLabor = () => {
-    if (!settings?.laborHourPrice) return 800
-    return Math.round(settings.laborHourPrice)
-  }
-
-  const calcTotalCost = () => calcCostMaterial() + calcCostEnergy() + calcCostLabor()
-
-  const calcMargin = () => {
-    if (!order?.totalPrice || calcTotalCost() === 0) return 0
-    return ((order.totalPrice - calcTotalCost()) / order.totalPrice * 100).toFixed(1)
-  }
-
-  const fmt = (n: number) => {
-    const curr = settings?.currency || 'ARS'
-    const symbol = curr === 'USD' ? 'US$' : '$'
-    return `${symbol}${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-  }
+  const fmt = (n: number) => formatCurrency(n, settings?.currency || 'ARS')
 
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center p-20 space-y-4">
@@ -431,7 +398,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               </div>
 
               <Tooltip content="Ver todas las órdenes anteriores de este cliente">
-                <button className="w-full py-3 bg-neutral-900 border border-white/5 rounded-xl text-[10px] font-black text-neutral-400 hover:bg-neutral-800 hover:text-white transition-all tracking-widest uppercase">
+                <button
+                  onClick={() => window.location.href = `/dashboard/orders?search=${encodeURIComponent(order?.customerName || '')}`}
+                  className="w-full py-3 bg-neutral-900 border border-white/5 rounded-xl text-[10px] font-black text-neutral-400 hover:bg-neutral-800 hover:text-white transition-all tracking-widest uppercase"
+                >
                   Ver Historial de Compras
                 </button>
               </Tooltip>
@@ -454,20 +424,20 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <div className="space-y-4">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-neutral-500 font-bold">Costo Material</span>
-                <span className="text-white font-bold">{fmt(calcCostMaterial())}</span>
+                <span className="text-white font-bold">{fmt(orderCosts.material)}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-neutral-500 font-bold">Energía Est.</span>
-                <span className="text-white font-bold">{fmt(calcCostEnergy())}</span>
+                <span className="text-white font-bold">{fmt(orderCosts.energy)}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-neutral-500 font-bold">Mano de Obra</span>
-                <span className="text-white font-bold">{fmt(calcCostLabor())}</span>
+                <span className="text-white font-bold">{fmt(orderCosts.labor)}</span>
               </div>
               <div className="h-px bg-white/5 my-2"></div>
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-black text-brand-orange uppercase">Margen Neto</span>
-                <span className="text-lg font-black text-white">{calcMargin()}%</span>
+                <span className="text-lg font-black text-white">{orderMargin}%</span>
               </div>
               
               <div className="p-3 bg-brand-orange/10 rounded-xl border border-brand-orange/20 mt-4">

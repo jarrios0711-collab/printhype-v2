@@ -16,9 +16,10 @@ import {
     ChevronDown,
     ChevronRight,
     Package,
-    AlertTriangle
+    AlertTriangle,
+    Search
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
 import { Dictionary } from '@/config/dictionary'
 import Tooltip from '@/components/ui/Tooltip'
@@ -71,6 +72,8 @@ export default function InventoryPage() {
         pricePerKg: 0,
         color: '#FF6600'
     })
+
+    const [searchQuery, setSearchQuery] = useState('')
 
     const fetchInventory = async () => {
         setIsLoading(true)
@@ -139,12 +142,25 @@ export default function InventoryPage() {
         return result
     }, [materials])
 
-    // Filtered groups based on active filter
+    // Filtered groups based on active filter + search
     const filteredGroups = useMemo(() => {
-        if (activeFilter === 'Todos') return grouped
-        const key = Object.keys(grouped).find(k => k === activeFilter)
-        return key ? { [key]: grouped[key] } : {}
-    }, [grouped, activeFilter])
+        const groups = activeFilter === 'Todos' ? grouped : (() => {
+            const key = Object.keys(grouped).find(k => k === activeFilter)
+            return key ? { [key]: grouped[key] } : {}
+        })()
+
+        if (!searchQuery) return groups
+
+        const q = searchQuery.toLowerCase()
+        const result: Record<string, any[]> = {}
+        for (const [type, items] of Object.entries(groups)) {
+            const filtered = (items as any[]).filter(m =>
+                m.name?.toLowerCase().includes(q) || m.brand?.toLowerCase().includes(q)
+            )
+            if (filtered.length) result[type] = filtered
+        }
+        return result
+    }, [grouped, activeFilter, searchQuery])
 
     const handleAddMaterial = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -273,8 +289,25 @@ export default function InventoryPage() {
                     <p className="text-neutral-500 text-xs sm:text-sm mt-1">{Dictionary.inventory.subtitle}</p>
                 </div>
                 <div className="flex gap-3 w-full sm:w-auto">
-                    <Tooltip content="Exportar inventario">
-                        <button className="flex items-center gap-2 px-4 py-2 border border-neutral-800 rounded-xl text-xs font-bold hover:bg-neutral-900 transition-all text-neutral-400 tap-target flex-1 sm:flex-initial justify-center">
+                    <Tooltip content="Exportar inventario a CSV">
+                        <button
+                            onClick={() => {
+                                const csv = 'Nombre,Marca,Tipo,Precio/Kg,Stock (g)\n' +
+                                    Object.entries(grouped).flatMap(([type, items]) =>
+                                        items.map((m: any) =>
+                                            `"${m.name}","${m.brand}","${type}",${m.pricePerKg},${m.stocks?.[0]?.weightGrams || 0}`
+                                        )
+                                    ).join('\n')
+                                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+                                const url = URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url
+                                a.download = `inventario-${new Date().toISOString().slice(0, 10)}.csv`
+                                a.click()
+                                URL.revokeObjectURL(url)
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 border border-neutral-800 rounded-xl text-xs font-bold hover:bg-neutral-900 transition-all text-neutral-400 tap-target flex-1 sm:flex-initial justify-center"
+                        >
                             <Download size={14} /> EXPORTAR
                         </button>
                     </Tooltip>
@@ -347,9 +380,16 @@ export default function InventoryPage() {
                     })}
                 </div>
                 <div className="ml-auto hidden sm:flex items-center gap-4 px-4 border-l border-neutral-800">
-                    <Tooltip content="Próximamente: filtros por marca, precio y rango de stock">
-                        <div className="flex items-center gap-2 text-neutral-500 text-xs font-bold">
-                            <Filter size={14} /> Filtros Avanzados
+                    <Tooltip content="Filtrar por nombre o marca">
+                        <div className="relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                            <input
+                                type="text"
+                                placeholder="Buscar material..."
+                                value={searchQuery || ''}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-48 pl-9 pr-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange transition-colors"
+                            />
                         </div>
                     </Tooltip>
                 </div>

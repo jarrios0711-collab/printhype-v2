@@ -136,6 +136,7 @@ export default function DashboardPage() {
     const [onboardingDismissed, setOnboardingDismissed] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [settings, setSettings] = useState<any>(null)
+    const [aiAnalysis, setAiAnalysis] = useState<string | null>(null)
     
     // Quick Order Modal
     const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false)
@@ -699,9 +700,43 @@ export default function DashboardPage() {
                             </div>
                         </div>
 
-                        <Link href="/dashboard/ai-lab" className="block w-full py-3 mt-6 bg-black/40 hover:bg-black/60 rounded-xl text-xs font-bold border border-white/5 transition-all text-neutral-300 text-center uppercase tracking-widest">
-                            ABRIR CONSOLA IA
-                        </Link>
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={async () => {
+                                    const ctx = `Analizá el taller: ${stats.activeOrders} pedidos activos, ${inventory.length} materiales, ${allPrinters.filter(p => p.status === 'online' || p.online).length} impresoras online, ${stats.lowStock} materiales con stock bajo.`
+                                    try {
+                                        const res = await fetch('/api/ai/stream', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ prompt: ctx, context: 'Analista de Taller' }),
+                                        })
+                                        if (res.ok) {
+                                            const reader = res.body?.getReader()
+                                            if (reader) {
+                                                setAiAnalysis('')
+                                                const decoder = new TextDecoder()
+                                                while (true) {
+                                                    const { done, value } = await reader.read()
+                                                    if (done) break
+                                                    setAiAnalysis(prev => prev + decoder.decode(value))
+                                                }
+                                            }
+                                        }
+                                    } catch { /* silencioso */ }
+                                }}
+                                className="flex-1 py-3 bg-brand-orange/20 hover:bg-brand-orange/30 border border-brand-orange/30 rounded-xl text-xs font-bold text-brand-orange transition-all text-center uppercase tracking-widest"
+                            >
+                                ANÁLISIS IA
+                            </button>
+                            <Link href="/dashboard/ai-lab" className="flex-1 py-3 bg-black/40 hover:bg-black/60 rounded-xl text-xs font-bold border border-white/5 transition-all text-neutral-300 text-center uppercase tracking-widest">
+                                CONSOLA IA
+                            </Link>
+                        </div>
+                        {aiAnalysis && (
+                            <div className="mt-4 p-4 bg-brand-orange/5 border border-brand-orange/10 rounded-2xl">
+                                <p className="text-xs text-neutral-300 leading-relaxed whitespace-pre-wrap">{aiAnalysis}</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

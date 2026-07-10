@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getServiceClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const ProfileSchema = z.object({
@@ -13,10 +13,16 @@ const ProfileSchema = z.object({
 
 export async function GET() {
   try {
-    const supabase = getServiceClient()
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { data: profiles, error } = await supabase
       .from('filament_profiles')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: true })
 
     if (error) throw error
@@ -29,10 +35,15 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const body = await req.json()
     const parsed = ProfileSchema.parse(body)
 
-    const supabase = getServiceClient()
     const { data, error } = await supabase
       .from('filament_profiles')
       .insert([{
@@ -42,6 +53,7 @@ export async function POST(req: Request) {
         bed_temp: parsed.bedTemp,
         brand: parsed.brand,
         color: parsed.color,
+        user_id: user.id,
       }])
       .select()
       .single()
@@ -59,14 +71,23 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
-    const supabase = getServiceClient()
-    const { error } = await supabase.from('filament_profiles').delete().eq('id', id)
-    if (error) throw error
+    const { error } = await supabase
+      .from('filament_profiles')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
 
+    if (error) throw error
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('DELETE /api/filament-profiles error:', error)

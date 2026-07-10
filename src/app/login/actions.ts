@@ -113,8 +113,12 @@ export async function signup(formData: FormData) {
 export async function loginGuest() {
   const supabase = await createClient()
 
-  const email = 'invitado@jr3d.com'
-  const password = 'invitadotesteo'
+  const email = process.env.GUEST_EMAIL
+  const password = process.env.GUEST_PASSWORD
+
+  if (!email || !password) {
+    redirect('/login?error=El acceso de invitado no está disponible en este momento')
+  }
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 

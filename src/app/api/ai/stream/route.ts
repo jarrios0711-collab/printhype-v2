@@ -172,14 +172,14 @@ export async function POST(req: NextRequest) {
     const model = config?.model || meta.defaultModel
     const baseUrl = config?.base_url || meta.defaultUrl
 
-    // --- Consultar bases de datos para inyectar en prompt ---
+    // --- Consultar bases de datos del usuario para inyectar en prompt ---
     let dbContext = ''
     try {
       const [ordersRes, inventoryRes, printersRes, budgetsRes] = await Promise.all([
-        admin.from('order_registry').select('*').order('created_at', { ascending: false }).limit(20),
-        admin.from('inventory_items').select('*'),
-        admin.from('printers').select('*'),
-        admin.from('budgets').select('*').limit(20)
+        admin.from('order_registry').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }).limit(20),
+        admin.from('inventory_items').select('*').eq('user_id', user?.id),
+        admin.from('impresoras').select('*').eq('user_id', user?.id),
+        admin.from('budgets').select('*').eq('user_id', user?.id).limit(20)
       ])
 
       const orders = ordersRes.data || []

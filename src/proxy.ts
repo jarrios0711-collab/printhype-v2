@@ -25,24 +25,30 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isLoginPage = request.nextUrl.pathname.startsWith('/login')
-  const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api')
-  const isPublicAsset = request.nextUrl.pathname.startsWith('/_next') ||
-    request.nextUrl.pathname === '/' ||
-    request.nextUrl.pathname === '/favicon.ico' ||
-    request.nextUrl.pathname.startsWith('/sw.js')
+  const { pathname } = request.nextUrl
 
-  // Allow API routes — they use service role key internally
-  if (isApiRoute) return supabaseResponse
+  // Rutas públicas que no requieren autenticación
+  const isPublic =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/auth') ||
+    pathname === '/' ||
+    pathname.startsWith('/_next') ||
+    pathname === '/favicon.ico' ||
+    pathname.startsWith('/sw.js') ||
+    pathname.startsWith('/offline') ||
+    /\.(svg|png|jpg|jpeg|gif|webp)$/.test(pathname)
 
-  if (!user && !isLoginPage && !isAuthPage && !isPublicAsset) {
+  if (isPublic) return supabaseResponse
+
+  // Si no hay usuario y la ruta no es pública, redirigir a login
+  if (!user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user && isLoginPage) {
+  // Si hay usuario y está en login, redirigir al dashboard
+  if (user && pathname.startsWith('/login')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)

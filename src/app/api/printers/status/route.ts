@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server'
-import { getServiceClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { queryMoonraker } from '@/lib/moonraker'
 
 export async function GET() {
   try {
-    const supabase = getServiceClient()
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { data: printers, error } = await supabase
       .from('impresoras')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: true })
 
     if (error) throw error

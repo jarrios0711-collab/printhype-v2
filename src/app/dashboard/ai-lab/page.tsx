@@ -44,6 +44,29 @@ export default function AILabPage() {
     const [error, setError] = useState<string | null>(null)
     const [aiProvider, setAiProvider] = useState<string | null>(null)
     const [aiConfigured, setAiConfigured] = useState<boolean | null>(null)
+    const [historyLoaded, setHistoryLoaded] = useState(false)
+    const SAVE_KEY = 'ph_ai_lab_history'
+
+    // Cargar historial desde localStorage al montar
+    useEffect(() => {
+        if (historyLoaded) return
+        try {
+            const saved = localStorage.getItem(SAVE_KEY)
+            if (saved) {
+                const parsed = JSON.parse(saved)
+                if (Array.isArray(parsed)) setMessages(parsed)
+            }
+        } catch { /* ignore */ }
+        setHistoryLoaded(true)
+    }, [historyLoaded])
+
+    // Guardar historial cuando cambian los mensajes
+    useEffect(() => {
+        if (!historyLoaded) return
+        try {
+            localStorage.setItem(SAVE_KEY, JSON.stringify(messages))
+        } catch { /* ignore */ }
+    }, [messages, historyLoaded])
 
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -264,7 +287,12 @@ export default function AILabPage() {
                         <div className="flex gap-2">
                             <Tooltip content="Limpiar historial de conversación">
                                 <button
-                                    onClick={() => setMessages([])}
+                                    onClick={() => {
+                                        if (messages.length === 0 || confirm('¿Eliminar todo el historial de conversación?')) {
+                                            setMessages([])
+                                            localStorage.removeItem(SAVE_KEY)
+                                        }
+                                    }}
                                     className="p-2 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-lg transition-all"
                                 >
                                     <RefreshCw size={16} />

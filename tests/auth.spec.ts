@@ -15,7 +15,7 @@ test.describe('PrintHype Authentication Flow', () => {
     
     // Wait for redirect to page with error query param
     await expect(page).toHaveURL(/.*login\?error=.*/);
-    await expect(page.locator('form')).toBeVisible();
+    await expect(page.locator('form').first()).toBeVisible();
   });
 
   test('should login successfully with test user and redirect to dashboard', async ({ page }) => {
@@ -26,6 +26,6 @@ test.describe('PrintHype Authentication Flow', () => {
 
     // Should redirect to dashboard
     await expect(page).toHaveURL(/.*dashboard.*/, { timeout: 10000 });
-    await expect(page.locator('h1')).toContainText('Buenos días');
+    await expect(page.locator('h1')).toContainText(/Buen(as|os) (tardes|días|noches)/);
   });
 });
