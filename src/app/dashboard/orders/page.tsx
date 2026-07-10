@@ -52,10 +52,14 @@ function OrdersPage() {
 
     const [searchQuery, setSearchQuery] = useState('')
     const [statusFilter, setStatusFilter] = useState<string>('')
+    const [priorityFilter, setPriorityFilter] = useState<string>('')
     const [dateFrom, setDateFrom] = useState('')
     const [dateTo, setDateTo] = useState('')
     const [currentPage, setCurrentPage] = useState(1)
     const [showExportMenu, setShowExportMenu] = useState(false)
+    // Batch selection
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [showBatchMenu, setShowBatchMenu] = useState(false)
 
     const { showToast } = useToast()
 
@@ -73,6 +77,10 @@ function OrdersPage() {
 
         if (statusFilter) {
             result = result.filter(o => o.status === statusFilter)
+        }
+
+        if (priorityFilter) {
+            result = result.filter(o => o.priority === priorityFilter)
         }
 
         if (dateFrom) {
@@ -358,6 +366,21 @@ function OrdersPage() {
                         <option value="COMPLETED">Completados</option>
                     </select>
                 </Tooltip>
+                <Tooltip content="Filtrar por prioridad">
+                    <select
+                        value={priorityFilter}
+                        onChange={(e) => {
+                            setPriorityFilter(e.target.value)
+                            setCurrentPage(1)
+                        }}
+                        className="px-4 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold appearance-none focus:outline-none focus:border-brand-orange/50 text-neutral-400 cursor-pointer tap-target"
+                    >
+                        <option value="">Todas las prioridades</option>
+                        <option value="URGENT">🔴 Urgente</option>
+                        <option value="PRIORITY">🟡 Prioridad</option>
+                        <option value="NORMAL">🟢 Normal</option>
+                    </select>
+                </Tooltip>
                 <Tooltip content="Filtrar desde fecha">
                     <input
                         type="date"
@@ -376,10 +399,72 @@ function OrdersPage() {
                 </Tooltip>
             </div>
 
+            {selectedIds.size > 0 && (
+                <div className="relative z-20">
+                    <div className="flex items-center gap-3 px-4 py-3 bg-brand-orange/10 border border-brand-orange/30 rounded-xl">
+                        <span className="text-xs font-bold text-brand-orange">{selectedIds.size} seleccionado(s)</span>
+                        <div className="h-4 w-px bg-brand-orange/20" />
+                        <select
+                            value=""
+                            onChange={async (e) => {
+                                const action = e.target.value
+                                if (!action || action === 'bulk-action') return
+                                const ids = Array.from(selectedIds)
+                                if (action === 'delete') {
+                                    if (!confirm(`¿Eliminar ${ids.length} orden(es)?`)) return
+                                }
+                                try {
+                                    const res = await fetch('/api/orders/batch', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ ids, action, value: action === 'delete' ? undefined : action })
+                                    })
+                                    const data = await res.json()
+                                    if (data.error) throw new Error(data.error)
+                                    setSelectedIds(new Set())
+                                    fetchOrders()
+                                    showToast(`${ids.length} orden(es) actualizada(s)`, 'success')
+                                } catch (err: any) {
+                                    showToast(err.message || 'Error en acción por lote', 'error')
+                                }
+                                e.target.value = 'bulk-action'
+                            }}
+                            className="px-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded-lg text-xs font-bold text-neutral-300 cursor-pointer"
+                        >
+                            <option value="bulk-action">Acción por lote...</option>
+                            <option value="PRINTING">Marcar como En Imprenta</option>
+                            <option value="SHIPPED">Marcar como Para Enviar</option>
+                            <option value="COMPLETED">Marcar como Completado</option>
+                            <option value="delete">🗑️ Eliminar seleccionadas</option>
+                        </select>
+                        <button
+                            onClick={() => setSelectedIds(new Set())}
+                            className="text-[10px] font-bold text-neutral-500 hover:text-white transition-colors"
+                        >
+                            Limpiar
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="glass-card rounded-3xl overflow-x-auto">
                 <table className="w-full text-left border-collapse responsive-table">
                     <thead>
                         <tr className="border-b border-neutral-900 bg-neutral-950 sticky top-0 z-10">
+                            <th className="p-5 w-10">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedIds.size > 0 && selectedIds.size === filteredOrders.length}
+                                    onChange={() => {
+                                        if (selectedIds.size === filteredOrders.length) {
+                                            setSelectedIds(new Set())
+                                        } else {
+                                            setSelectedIds(new Set(filteredOrders.map(o => o.id)))
+                                        }
+                                    }}
+                                    className="accent-brand-orange cursor-pointer"
+                                />
+                            </th>
                             <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">ID Orden</th>
                             <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Cliente</th>
                             <th className="p-5 text-[10px] font-black uppercase tracking-widest text-secondary">Items</th>
@@ -391,14 +476,14 @@ function OrdersPage() {
                     <tbody className="divide-y divide-neutral-900">
                         {isLoading ? (
                             <tr>
-                                <td colSpan={6} className="p-10 sm:p-20 text-center">
+                                <td colSpan={7} className="p-10 sm:p-20 text-center">
                                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-brand-orange"></div>
                                     <p className="mt-4 text-xs font-bold text-neutral-500 uppercase tracking-widest">Sincronizando con la DB...</p>
                                 </td>
                             </tr>
                         ) : error ? (
                             <tr>
-                                <td colSpan={6} className="p-10 sm:p-20 text-center">
+                                <td colSpan={7} className="p-10 sm:p-20 text-center">
                                     <AlertCircle size={40} className="mx-auto text-red-500 mb-4 opacity-50" />
                                     <p className="text-sm font-black text-red-500 uppercase tracking-widest">{error}</p>
                                     <Tooltip content="Reintentar conexión">
@@ -413,7 +498,7 @@ function OrdersPage() {
                             </tr>
                         ) : filteredOrders.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="p-10 sm:p-20 text-center">
+                                <td colSpan={7} className="p-10 sm:p-20 text-center">
                                     <Package size={40} className="mx-auto text-neutral-800 mb-4" />
                                     <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
                                         {searchQuery || statusFilter
@@ -424,7 +509,22 @@ function OrdersPage() {
                             </tr>
                         ) : (
                             paginatedOrders.map((order) => (
-                                <tr key={order.id} className="hover:bg-white/[0.02] transition-colors group cursor-pointer">
+                                <tr key={order.id} className={cn("hover:bg-white/[0.02] transition-colors group cursor-pointer", selectedIds.has(order.id) && "bg-brand-orange/5")}>
+                                    <td className="p-5 w-10" onClick={(e) => e.stopPropagation()}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIds.has(order.id)}
+                                            onChange={() => {
+                                                setSelectedIds(prev => {
+                                                    const next = new Set(prev)
+                                                    if (next.has(order.id)) next.delete(order.id)
+                                                    else next.add(order.id)
+                                                    return next
+                                                })
+                                            }}
+                                            className="accent-brand-orange cursor-pointer"
+                                        />
+                                    </td>
                                     <td className="p-5" data-label="ID Orden">
                                         <div className="flex flex-col gap-1">
                                             <span className="font-mono text-xs font-bold text-brand-orange uppercase">{order.id.slice(0, 8)}...</span>
@@ -502,6 +602,18 @@ function OrdersPage() {
                                     </td>
                                     <td className="p-5 text-right" data-label="">
                                         <div className="flex items-center justify-end gap-2">
+                                            <Tooltip content="Descargar factura PDF">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        window.open(`/dashboard/orders/${order.id}`, '_blank')
+                                                    }}
+                                                    className="p-2 rounded-lg bg-brand-orange/10 border border-brand-orange/20 text-brand-orange hover:bg-brand-orange/20 transition-all"
+                                                    title="Descargar Factura PDF"
+                                                >
+                                                    <Download size={14} />
+                                                </button>
+                                            </Tooltip>
                                             {order.customerPhone && (
                                                 <Tooltip content="Enviar factura por WhatsApp">
                                                     <a

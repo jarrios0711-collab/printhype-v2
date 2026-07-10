@@ -24,13 +24,16 @@ import { cn, getWaUrl, calcOrderCosts, calcMargin, formatCurrency } from '@/lib/
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import Tooltip from '@/components/ui/Tooltip'
 import { generateInvoiceHtml } from '@/lib/invoice'
+import dynamic from 'next/dynamic'
+
+// Cargar el botón PDF solo en el cliente para evitar errores con fflate/node
+const PdfDownloadButton = dynamic(() => import('@/components/ui/PdfDownloadButton'), { ssr: false })
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params)
   const [order, setOrder] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
-
   const fetchOrder = async () => {
     setIsLoading(true)
     try {
@@ -81,15 +84,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     fetch('/api/printers').then(r => r.json()).then(data => { if (!data.error) setPrinters(data) }).catch(() => {})
     fetch('/api/settings').then(r => r.json()).then(data => { if (!data.error) setSettings(data) }).catch(() => {})
   }, [])
-
-  const handleDownloadInvoice = () => {
-    if (!order) return
-    const html = generateInvoiceHtml(order, settings)
-    const blob = new Blob([html], { type: 'text/html' })
-    const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
 
   const statusProgress: Record<string, number> = {
     PENDING: 0, PRINTING: 45, SHIPPED: 85, COMPLETED: 100, CANCELLED: 0,
@@ -209,12 +203,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               </Tooltip>
             )}
             <Tooltip content="Descargar comprobante del pedido en PDF">
-              <button
-                onClick={handleDownloadInvoice}
-                className="px-5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-black hover:bg-neutral-800 transition-all text-neutral-300"
-              >
-                DESCARGAR FACTURA
-              </button>
+              <PdfDownloadButton
+                order={order}
+                settings={settings}
+                generateHtml={generateInvoiceHtml}
+              />
             </Tooltip>
             <div className="relative group">
               <Tooltip content="Cambiar el estado de producción del pedido">
