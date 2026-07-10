@@ -137,6 +137,7 @@ export default function DashboardPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [settings, setSettings] = useState<any>(null)
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(null)
+    const [aiLoading, setAiLoading] = useState(false)
     
     // Quick Order Modal
     const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false)
@@ -703,6 +704,8 @@ export default function DashboardPage() {
                         <div className="flex gap-3 mt-6">
                             <button
                                 onClick={async () => {
+                                    setAiLoading(true)
+                                    setAiAnalysis(null)
                                     const ctx = `Analizá el taller: ${stats.activeOrders} pedidos activos, ${inventory.length} materiales, ${allPrinters.filter(p => p.status === 'online' || p.online).length} impresoras online, ${stats.lowStock} materiales con stock bajo.`
                                     try {
                                         const res = await fetch('/api/ai/stream', {
@@ -721,17 +724,38 @@ export default function DashboardPage() {
                                                     setAiAnalysis(prev => prev + decoder.decode(value))
                                                 }
                                             }
+                                        } else {
+                                            setAiAnalysis('⚠️ Error al conectar con el asistente. Verificá tu configuración de IA en Ajustes.')
                                         }
-                                    } catch { /* silencioso */ }
+                                    } catch {
+                                        setAiAnalysis('⚠️ Error de conexión con el asistente IA.')
+                                    } finally {
+                                        setAiLoading(false)
+                                    }
                                 }}
-                                className="flex-1 py-3 bg-brand-orange/20 hover:bg-brand-orange/30 border border-brand-orange/30 rounded-xl text-xs font-bold text-brand-orange transition-all text-center uppercase tracking-widest"
+                                className="flex-1 py-3 bg-brand-orange/20 hover:bg-brand-orange/30 border border-brand-orange/30 rounded-xl text-xs font-bold text-brand-orange transition-all text-center uppercase tracking-widest disabled:opacity-50"
+                                disabled={aiLoading}
                             >
-                                ANÁLISIS IA
+                                {aiLoading ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <span className="inline-block w-3 h-3 border-2 border-brand-orange border-t-transparent rounded-full animate-spin" />
+                                        ANALIZANDO...
+                                    </span>
+                                ) : (
+                                    'ANÁLISIS IA'
+                                )}
                             </button>
                             <Link href="/dashboard/ai-lab" className="flex-1 py-3 bg-black/40 hover:bg-black/60 rounded-xl text-xs font-bold border border-white/5 transition-all text-neutral-300 text-center uppercase tracking-widest">
                                 CONSOLA IA
                             </Link>
                         </div>
+                        {aiLoading && !aiAnalysis && (
+                            <div className="mt-4 p-4 bg-brand-orange/5 border border-brand-orange/10 rounded-2xl animate-pulse">
+                                <div className="h-3 w-3/4 bg-brand-orange/10 rounded mb-2" />
+                                <div className="h-3 w-1/2 bg-brand-orange/10 rounded mb-2" />
+                                <div className="h-3 w-2/3 bg-brand-orange/10 rounded" />
+                            </div>
+                        )}
                         {aiAnalysis && (
                             <div className="mt-4 p-4 bg-brand-orange/5 border border-brand-orange/10 rounded-2xl">
                                 <p className="text-xs text-neutral-300 leading-relaxed whitespace-pre-wrap">{aiAnalysis}</p>

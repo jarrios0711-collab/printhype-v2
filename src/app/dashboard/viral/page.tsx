@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
     Video,
     TrendingUp,
@@ -71,6 +71,23 @@ export default function ViralPage() {
     const [error, setError] = useState<string | null>(null)
     const [form, setForm] = useState({ title: '', platform: 'Instagram', contentIdea: '' })
     const [editForm, setEditForm] = useState({ title: '', platform: 'Instagram', status: 'DRAFT' as string, contentIdea: '' })
+    const [searchViral, setSearchViral] = useState('')
+    const [platformFilter, setPlatformFilter] = useState('')
+
+    const filteredCampaigns = useMemo(() => {
+        let result = [...campaigns]
+        if (searchViral) {
+            const q = searchViral.toLowerCase()
+            result = result.filter(c =>
+                c.title?.toLowerCase().includes(q) ||
+                c.contentIdea?.toLowerCase().includes(q)
+            )
+        }
+        if (platformFilter) {
+            result = result.filter(c => c.platform === platformFilter)
+        }
+        return result
+    }, [campaigns, searchViral, platformFilter])
 
     const fetchCampaigns = async () => {
         setIsLoading(true)
@@ -292,10 +309,35 @@ export default function ViralPage() {
 
             {/* Content Queue */}
             <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-4 sm:p-8 backdrop-blur-md">
-                <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 flex items-center gap-2">
-                    <Video className="text-brand-orange" size={20} />
-                    Campañas de Contenido
-                </h2>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4 sm:mb-6">
+                    <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+                        <Video className="text-brand-orange" size={20} />
+                        Campañas de Contenido
+                    </h2>
+                    <div className="flex gap-2 sm:ml-auto w-full sm:w-auto">
+                        <div className="relative flex-1 sm:w-48">
+                            <input
+                                type="text"
+                                placeholder="Buscar..."
+                                value={searchViral}
+                                onChange={(e) => setSearchViral(e.target.value)}
+                                className="w-full pl-3 pr-3 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange transition-colors"
+                            />
+                        </div>
+                        <select
+                            value={platformFilter}
+                            onChange={(e) => setPlatformFilter(e.target.value)}
+                            className="px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold text-neutral-400 cursor-pointer focus:outline-none focus:border-brand-orange"
+                        >
+                            <option value="">Todas</option>
+                            <option value="Instagram">📷 Instagram</option>
+                            <option value="TikTok">🎵 TikTok</option>
+                            <option value="YouTube">▶️ YouTube</option>
+                            <option value="Twitter">🐦 Twitter</option>
+                            <option value="LinkedIn">💼 LinkedIn</option>
+                        </select>
+                    </div>
+                </div>
 
                 {isLoading ? (
                     <div className="flex items-center justify-center py-16">
@@ -308,7 +350,13 @@ export default function ViralPage() {
                     </div>
                 ) : (
                     <div className="space-y-3 sm:space-y-4">
-                        {campaigns.map((camp) => (
+                        {filteredCampaigns.length === 0 ? (
+                            <div className="text-center py-10">
+                                <p className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">
+                                    {searchViral || platformFilter ? 'Sin resultados con esos filtros' : 'Sin campañas aún. Creá la primera.'}
+                                </p>
+                            </div>
+                        ) : filteredCampaigns.map((camp) => (
                             <div
                                 key={camp.id}
                                 onClick={() => openDetail(camp)}

@@ -178,6 +178,7 @@ function BudgetsPage() {
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'STL' | 'MANUAL'>('MANUAL')
     const [searchQuery, setSearchQuery] = useState('')
+    const [statusBudgetFilter, setStatusBudgetFilter] = useState<string>('')
 
     // AI suggestion state
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null)
@@ -561,6 +562,16 @@ function BudgetsPage() {
                         className="w-full pl-9 pr-3 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange transition-colors"
                     />
                 </div>
+                <select
+                    value={statusBudgetFilter}
+                    onChange={(e) => setStatusBudgetFilter(e.target.value)}
+                    className="px-4 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-bold appearance-none focus:outline-none focus:border-brand-orange/50 text-neutral-400 cursor-pointer"
+                >
+                    <option value="">Todos los estados</option>
+                    <option value="DRAFT">Borrador</option>
+                    <option value="SENT">Enviados</option>
+                    <option value="APPROVED">Aprobados</option>
+                </select>
             </div>
 
             {/* Stats */}
@@ -617,6 +628,7 @@ function BudgetsPage() {
                                     return (b.clientName || '').toLowerCase().includes(q)
                                         || (b.jobName || '').toLowerCase().includes(q)
                                 })
+                                .filter(b => !statusBudgetFilter || b.status === statusBudgetFilter)
                                 .map((b) => (
                                 <tr
                                     key={b.id}

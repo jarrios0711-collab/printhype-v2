@@ -18,7 +18,11 @@ import {
   Box,
   Printer as PrinterIcon,
   Loader2,
-  BrainCircuit
+  BrainCircuit,
+  History,
+  RotateCcw,
+  Circle,
+  MessageSquare
 } from 'lucide-react'
 import { cn, getWaUrl, calcOrderCosts, calcMargin, formatCurrency } from '@/lib/utils'
 import Breadcrumb from '@/components/ui/Breadcrumb'
@@ -79,11 +83,24 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   const [printers, setPrinters] = useState<any[]>([])
   const [settings, setSettings] = useState<any>(null)
+  const [activityLog, setActivityLog] = useState<any[]>([])
+  const [activityLoading, setActivityLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/printers').then(r => r.json()).then(data => { if (!data.error) setPrinters(data) }).catch(() => {})
     fetch('/api/settings').then(r => r.json()).then(data => { if (!data.error) setSettings(data) }).catch(() => {})
   }, [])
+
+  // Fetch activity log when order loads
+  useEffect(() => {
+    if (!order?.id) return
+    setActivityLoading(true)
+    fetch(`/api/orders/activity?orderId=${order.id}`)
+      .then(r => r.json())
+      .then(data => { if (!data.error) setActivityLog(data || []) })
+      .catch(() => {})
+      .finally(() => setActivityLoading(false))
+  }, [order?.id])
 
   const statusProgress: Record<string, number> = {
     PENDING: 0, PRINTING: 45, SHIPPED: 85, COMPLETED: 100, CANCELLED: 0,
@@ -300,6 +317,58 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     <BrainCircuit size={14} /> ANALIZAR STL EN AI LAB
                 </Link>
              </div>
+          </div>
+
+          {/* Activity Log */}
+          <div className="bg-neutral-950/40 border border-neutral-900 rounded-3xl p-8 backdrop-blur-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xs font-black text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                <History size={14} /> Historial de Actividad
+              </h2>
+              {activityLog.length > 0 && (
+                <span className="text-[9px] font-bold text-neutral-600">{activityLog.length} registro(s)</span>
+              )}
+            </div>
+            {activityLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 size={20} className="animate-spin text-neutral-600" />
+              </div>
+            ) : activityLog.length === 0 ? (
+              <div className="text-center py-8">
+                <History size={24} className="mx-auto text-neutral-800 mb-3" />
+                <p className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">Sin actividad registrada</p>
+                <p className="text-[9px] text-neutral-700 mt-1">Los cambios en esta orden aparecerán aquí</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-64 overflow-y-auto pr-2 scrollbar-thin">
+                {activityLog.map((log: any) => (
+                  <div key={log.id} className="flex items-start gap-3 bg-white/[0.03] rounded-xl p-3 border border-white/5">
+                    <div className="w-7 h-7 rounded-full bg-brand-orange/10 flex items-center justify-center shrink-0 mt-0.5">
+                      {log.action?.toLowerCase().includes('cre') || log.action?.toLowerCase().includes('new') ? (
+                        <Circle size={12} className="text-green-500" />
+                      ) : log.action?.toLowerCase().includes('actual') || log.action?.toLowerCase().includes('update') ? (
+                        <RotateCcw size={12} className="text-brand-orange" />
+                      ) : (
+                        <MessageSquare size={12} className="text-blue-500" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-white truncate">{log.action}</p>
+                      {log.metadata && Object.keys(log.metadata).length > 0 && (
+                        <p className="text-[9px] text-neutral-500 mt-0.5 font-mono truncate">
+                          {JSON.stringify(log.metadata).slice(0, 80)}
+                        </p>
+                      )}
+                      <p className="text-[9px] text-neutral-600 mt-0.5">
+                        {new Date(log.created_at).toLocaleString('es-AR', {
+                          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Items Table */}
