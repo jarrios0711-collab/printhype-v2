@@ -6,6 +6,10 @@ const PrinterSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
   ip_address: z.string().optional().default(''),
   port: z.number().optional().default(7125),
+  // Perfil de costos para la calculadora
+  purchasePrice: z.number().min(0).optional().default(0),
+  lifetimeHours: z.number().min(0).optional().default(12000),
+  powerWatts: z.number().min(0).optional().default(250),
 })
 
 export async function GET() {
@@ -24,7 +28,17 @@ export async function GET() {
 
     if (error && error.code !== '42P01') throw error
 
-    return NextResponse.json(printers || [])
+    return NextResponse.json((printers || []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      status: p.status,
+      ip_address: p.ip_address || '',
+      port: p.port ?? 7125,
+      purchasePrice: Number(p.purchase_price ?? 0),
+      lifetimeHours: Number(p.lifetime_hours ?? 12000),
+      powerWatts: Number(p.power_watts ?? 250),
+      created_at: p.created_at,
+    })))
   } catch (error) {
     console.error('GET /api/printers error:', error)
     return NextResponse.json({ error: 'Error al cargar impresoras' }, { status: 500 })
@@ -40,16 +54,25 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { name, ip_address, port } = PrinterSchema.parse(body)
+    const { name, ip_address, port, purchasePrice, lifetimeHours, powerWatts } = PrinterSchema.parse(body)
 
     let result = await supabase
       .from('impresoras')
-      .insert([{ name, status: 'online', ip_address, port, user_id: user.id }])
+      .insert([{
+        name,
+        status: 'online',
+        ip_address,
+        port,
+        purchase_price: purchasePrice,
+        lifetime_hours: lifetimeHours,
+        power_watts: powerWatts,
+        user_id: user.id,
+      }])
       .select()
       .single()
 
     if (result.error && result.error.code === '42703') {
-      console.warn('Fallback: ip_address o port no existen en la tabla. Insertando sin ellos.')
+      console.warn('Fallback: ip_address, port o perfil de costos no existen en la tabla. Insertando sin ellos.')
       result = await supabase
         .from('impresoras')
         .insert([{ name, status: 'online', user_id: user.id }])
@@ -58,7 +81,17 @@ export async function POST(req: Request) {
     }
 
     if (result.error) throw result.error
-    return NextResponse.json(result.data)
+    return NextResponse.json({
+      id: result.data.id,
+      name: result.data.name,
+      status: result.data.status,
+      ip_address: result.data.ip_address || '',
+      port: result.data.port ?? 7125,
+      purchasePrice: Number(result.data.purchase_price ?? 0),
+      lifetimeHours: Number(result.data.lifetime_hours ?? 12000),
+      powerWatts: Number(result.data.power_watts ?? 250),
+      created_at: result.data.created_at,
+    })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
@@ -77,13 +110,16 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json()
-    const { id, ip_address, port, name } = body
+    const { id, ip_address, port, name, purchasePrice, lifetimeHours, powerWatts } = body
     if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
     const updates: any = {}
     if (name !== undefined) updates.name = name
     if (ip_address !== undefined) updates.ip_address = ip_address
     if (port !== undefined) updates.port = port
+    if (purchasePrice !== undefined) updates.purchase_price = purchasePrice
+    if (lifetimeHours !== undefined) updates.lifetime_hours = lifetimeHours
+    if (powerWatts !== undefined) updates.power_watts = powerWatts
 
     let result = await supabase
       .from('impresoras')
@@ -94,9 +130,11 @@ export async function PATCH(req: Request) {
       .single()
 
     if (result.error && result.error.code === '42703') {
-      console.warn('Fallback: ip_address o port no existen en la tabla.')
+      console.warn('Fallback: ip_address, port o perfil de costos no existen en la tabla.')
       const safeUpdates: any = {}
       if (name !== undefined) safeUpdates.name = name
+      if (ip_address !== undefined) safeUpdates.ip_address = ip_address
+      if (port !== undefined) safeUpdates.port = port
       result = await supabase
         .from('impresoras')
         .update(safeUpdates)
@@ -107,7 +145,17 @@ export async function PATCH(req: Request) {
     }
 
     if (result.error) throw result.error
-    return NextResponse.json(result.data)
+    return NextResponse.json({
+      id: result.data.id,
+      name: result.data.name,
+      status: result.data.status,
+      ip_address: result.data.ip_address || '',
+      port: result.data.port ?? 7125,
+      purchasePrice: Number(result.data.purchase_price ?? 0),
+      lifetimeHours: Number(result.data.lifetime_hours ?? 12000),
+      powerWatts: Number(result.data.power_watts ?? 250),
+      created_at: result.data.created_at,
+    })
   } catch (error: any) {
     console.error('PATCH /api/printers error:', error)
     return NextResponse.json({ error: 'Error al actualizar impresora' }, { status: 500 })

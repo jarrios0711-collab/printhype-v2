@@ -20,6 +20,10 @@ const UpdateSchema = z.object({
   marginPercent: z.number().optional(),
   notes: z.string().optional(),
   currency: z.string().optional(),
+  consumablesCost: z.number().min(0).optional(),
+  overheadCost: z.number().min(0).optional(),
+  failBuffer: z.number().min(0).optional(),
+  depreciationCost: z.number().min(0).optional(),
 })
 
 export async function PATCH(
@@ -54,6 +58,10 @@ export async function PATCH(
     if (parsed.marginPercent !== undefined) updateData.margin_percent = parsed.marginPercent
     if (parsed.notes !== undefined) updateData.notes = parsed.notes
     if (parsed.currency !== undefined) updateData.currency = parsed.currency
+    if (parsed.consumablesCost !== undefined) updateData.consumables_cost = parsed.consumablesCost
+    if (parsed.overheadCost !== undefined) updateData.overhead_cost = parsed.overheadCost
+    if (parsed.failBuffer !== undefined) updateData.fail_buffer = parsed.failBuffer
+    if (parsed.depreciationCost !== undefined) updateData.depreciation_cost = parsed.depreciationCost
 
     const admin = getServiceClient()
     let result = await admin
@@ -64,9 +72,13 @@ export async function PATCH(
       .select()
       .single()
 
-    if (result.error && result.error.code === '42703') { // Fallback if currency column doesn't exist
+    if (result.error && result.error.code === '42703') { // Fallback: sin columnas de desglose/currency
       const safeUpdates = { ...updateData }
       delete safeUpdates.currency
+      delete safeUpdates.consumables_cost
+      delete safeUpdates.overhead_cost
+      delete safeUpdates.fail_buffer
+      delete safeUpdates.depreciation_cost
       result = await admin
         .from('budgets')
         .update(safeUpdates)
@@ -100,6 +112,10 @@ export async function PATCH(
       marginPercent: Number(data.margin_percent),
       notes: data.notes || '',
       currency: data.currency || 'ARS',
+      consumablesCost: Number(data.consumables_cost ?? 0),
+      overheadCost: Number(data.overhead_cost ?? 0),
+      failBuffer: Number(data.fail_buffer ?? 0),
+      depreciationCost: Number(data.depreciation_cost ?? 0),
       createdAt: data.created_at,
     })
   } catch (error: any) {

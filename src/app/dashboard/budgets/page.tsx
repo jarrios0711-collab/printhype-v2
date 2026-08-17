@@ -24,6 +24,8 @@ import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
 import Tooltip from '@/components/ui/Tooltip'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
+import { calculateCost, machineRatePerHour, formatMoney, type Currency } from '@/lib/costCalculator'
+import CostBreakdown from '@/components/cost/CostBreakdown'
 
 // --- Types ---
 
@@ -45,6 +47,10 @@ interface Budget {
     marginPercent: number
     notes: string
     currency: string
+    consumablesCost: number
+    overheadCost: number
+    failBuffer: number
+    depreciationCost: number
     createdAt: string
 }
 
@@ -57,10 +63,20 @@ interface Material {
     pricePerKg: number
 }
 
+interface Printer {
+    id: string
+    name: string
+    purchasePrice: number
+    lifetimeHours: number
+    powerWatts: number
+}
+
 interface Settings {
     kwhPrice: number
     laborHourPrice: number
     profitMargin: number
+    failRatePercent: number
+    overheadPerJob: number
     currency: string
 }
 
@@ -166,6 +182,7 @@ function BudgetsPage() {
 
     const [budgets, setBudgets] = useState<Budget[]>([])
     const [materials, setMaterials] = useState<Material[]>([])
+    const [printers, setPrinters] = useState<Printer[]>([])
     const [settings, setSettings] = useState<Settings | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
@@ -194,13 +211,16 @@ function BudgetsPage() {
         clientName: '',
         jobName: '',
         materialId: '',
+        printerId: '',
         filamentGrams: 0,
         printHours: 0,
+        laborHours: 0,
         energyCost: 0,
         laborCost: 0,
+        consumables: 0,
         marginPercent: 150,
         notes: '',
-        currency: 'ARS',
+        currency: 'ARS' as Currency,
     }
     const [form, setForm] = useState(initialForm)
 
@@ -210,13 +230,16 @@ function BudgetsPage() {
         jobName: '',
         status: 'DRAFT' as string,
         materialId: '',
+        printerId: '',
         filamentGrams: 0,
         printHours: 0,
+        laborHours: 0,
         energyCost: 0,
         laborCost: 0,
+        consumables: 0,
         marginPercent: 150,
         notes: '',
-        currency: 'ARS',
+        currency: 'ARS' as Currency,
     })
 
     // --- Data fetching ---
@@ -263,56 +286,95 @@ function BudgetsPage() {
         }
     }
 
+    const fetchPrinters = async () => {
+        try {
+            const res = await fetch('/api/printers')
+            const data = await res.json()
+            if (!data.error) setPrinters(data)
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
     useEffect(() => {
         fetchBudgets()
         fetchMaterials()
         fetchSettings()
+        fetchPrinters()
     }, [])
 
-    // --- Real-time calculation (create) ---
+    // --- Real-time calculation (create + edit) ---
+    // Usa el modelo completo: material + energía + depreciación + mano de obra
+    // + consumibles + overhead + buffer de fallo → precio sugerido con margen.
+    // Si hay impresora con perfil de costos → watts y depreciación reales.
+    // Si no → usa la tarifa manual de energía ($/h) como fallback (como antes).
 
-    const calculations = useMemo(() => {
-        const material = materials.find(m => m.id === form.materialId)
-        const matCost = material ? (form.filamentGrams / 1000) * material.pricePerKg : 0
-        const energy = form.printHours * form.energyCost
-        const labor = form.printHours * form.laborCost
-        const total = matCost + energy + labor
-        const marginPct = form.marginPercent / 100
-        const sale = total * (1 + marginPct)
-        const profit = sale - total
-        const margin = sale > 0 ? (profit / sale) * 100 : 0
+    const buildBreakdown = (f: {
+        materialId: string
+        printerId: string
+        filamentGrams: number
+        printHours: number
+        laborHours: number
+        energyCost: number
+        laborCost: number
+        consumables: number
+        marginPercent: number
+        currency: Currency
+    }) => {
+        const material = materials.find(m => m.id === f.materialId)
+        const printer = printers.find(p => p.id === f.printerId) || null
+        const kwh = settings?.kwhPrice ?? 120.5
+        const fallbackRate = f.energyCost > 0 ? f.energyCost : (settings?.kwhPrice ?? 120.5) * 0.5
+
+        const profile = printer && printer.purchasePrice > 0
+            ? { purchasePrice: printer.purchasePrice, expectedLifetimeHours: printer.lifetimeHours || 12000, powerWatts: printer.powerWatts || 250 }
+            : fallbackRate > 0
+                ? { purchasePrice: 0, expectedLifetimeHours: 1, powerWatts: Math.round(fallbackRate / (kwh / 1000)) }
+                : null
+
+        const breakdown = calculateCost({
+            filamentGrams: f.filamentGrams,
+            materialPricePerKg: material?.pricePerKg ?? 0,
+            printHours: f.printHours,
+            laborHours: f.laborHours || f.printHours,
+            consumablesCost: f.consumables,
+            printer: profile,
+            settings: {
+                kwhPrice: kwh,
+                laborRatePerHour: f.laborCost || settings?.laborHourPrice || 800,
+                // margen del form es "markup sobre costo"; convertimos a "margen sobre venta"
+                targetMarginPercent: (f.marginPercent / 100) / (1 + f.marginPercent / 100) * 100,
+                failRatePercent: settings?.failRatePercent ?? 10,
+                overheadPerJob: settings?.overheadPerJob ?? 0,
+                currency: f.currency,
+            },
+        })
+
         return {
-            materialCost: matCost,
-            energyCost: energy,
-            laborCost: labor,
-            totalCost: total,
-            salePrice: sale,
-            profitAmount: profit,
-            marginPercent: margin,
+            ...breakdown,
+            // campos que el resto de la página espera
+            materialCost: breakdown.material,
+            energyCost: breakdown.machineTotal,
+            laborCost: breakdown.labor,
+            salePrice: breakdown.suggestedPrice,
         }
-    }, [form.materialId, form.filamentGrams, form.printHours, form.energyCost, form.laborCost, form.marginPercent, materials])
+    }
+
+    const calculations = useMemo(
+        () => buildBreakdown(form),
+        [form, materials, printers, settings]
+    )
 
     // Real-time calculation for edit
-    const editCalculations = useMemo(() => {
-        const material = materials.find(m => m.id === editForm.materialId)
-        const matCost = material ? (editForm.filamentGrams / 1000) * material.pricePerKg : 0
-        const energy = editForm.printHours * editForm.energyCost
-        const labor = editForm.printHours * editForm.laborCost
-        const total = matCost + energy + labor
-        const marginPct = editForm.marginPercent / 100
-        const sale = total * (1 + marginPct)
-        const profit = sale - total
-        const margin = sale > 0 ? (profit / sale) * 100 : 0
-        return {
-            materialCost: matCost,
-            energyCost: energy,
-            laborCost: labor,
-            totalCost: total,
-            salePrice: sale,
-            profitAmount: profit,
-            marginPercent: margin,
-        }
-    }, [editForm.materialId, editForm.filamentGrams, editForm.printHours, editForm.energyCost, editForm.laborCost, editForm.marginPercent, materials])
+    const editCalculations = useMemo(
+        () => buildBreakdown(editForm),
+        [editForm, materials, printers, settings]
+    )
+
+    const selectedPrinter = useMemo(
+        () => printers.find(p => p.id === form.printerId) || null,
+        [form.printerId, printers]
+    )
 
     // --- STL handlers ---
 
@@ -370,7 +432,7 @@ function BudgetsPage() {
             energyCost: settings ? settings.kwhPrice * 0.5 : 60.25,
             laborCost: settings?.laborHourPrice || 800,
             marginPercent: settings ? settings.profitMargin * 100 : 150,
-            currency: settings?.currency || 'ARS',
+            currency: (settings?.currency || 'ARS') as Currency,
         })
         setStlFile(null)
         setStlResult(null)
@@ -404,6 +466,10 @@ function BudgetsPage() {
                     marginPercent: calculations.marginPercent,
                     notes: form.notes,
                     currency: form.currency,
+                    consumablesCost: calculations.consumables,
+                    overheadCost: calculations.overhead,
+                    failBuffer: calculations.failBuffer,
+                    depreciationCost: calculations.machineDepreciation,
                 }),
             })
             const data = await res.json()
@@ -427,18 +493,23 @@ function BudgetsPage() {
         setEditingBudget(budget)
         // Load the margin back as a percentage for the slider
         const marginPct = budget.profitPercent > 0 ? budget.profitPercent : (settings?.profitMargin || 1.5) * 100
+        // Los costos guardados son totales; recuperamos la tarifa por hora para el editor
+        const hours = budget.printHours > 0 ? budget.printHours : 1
         setEditForm({
             clientName: budget.clientName,
             jobName: budget.jobName,
             status: budget.status,
             materialId: budget.materialId || '',
+            printerId: '',
             filamentGrams: budget.filamentGrams,
             printHours: budget.printHours,
-            energyCost: budget.energyCost,
-            laborCost: budget.laborCost,
+            laborHours: budget.printHours,
+            energyCost: budget.energyCost / hours,
+            laborCost: budget.laborCost / hours,
+            consumables: budget.consumablesCost || 0,
             marginPercent: marginPct,
             notes: budget.notes,
-            currency: budget.currency || 'ARS',
+            currency: (budget.currency || 'ARS') as Currency,
         })
         setConfirmDelete(null)
         setShowEditModal(true)
@@ -469,6 +540,10 @@ function BudgetsPage() {
                     marginPercent: editCalculations.marginPercent,
                     notes: editForm.notes,
                     currency: editForm.currency,
+                    consumablesCost: editCalculations.consumables,
+                    overheadCost: editCalculations.overhead,
+                    failBuffer: editCalculations.failBuffer,
+                    depreciationCost: editCalculations.machineDepreciation,
                 }),
             })
             const data = await res.json()
@@ -521,12 +596,8 @@ function BudgetsPage() {
 
     // --- Format helpers ---
 
-    const fmt = (n: number, curr?: string) => {
-        const symbol = curr === 'USD' ? 'US$' : '$'
-        if (n === 0) return `${symbol}0`
-        if (Math.abs(n) < 1) return `${symbol}${n.toFixed(2)}`
-        return `${symbol}${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-    }
+    const fmt = (n: number, curr?: string) =>
+        formatMoney(n, (curr === 'USD' ? 'USD' : 'ARS') as Currency)
 
     const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`
 
@@ -795,7 +866,7 @@ function BudgetsPage() {
                             <label className="text-[10px] font-black text-neutral-500 uppercase">Moneda</label>
                             <select
                                 value={form.currency}
-                                onChange={e => setForm({ ...form, currency: e.target.value })}
+                                onChange={e => setForm({ ...form, currency: e.target.value as Currency })}
                                 className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white appearance-none tap-target"
                             >
                                 <option value="ARS">ARS ($)</option>
@@ -821,7 +892,37 @@ function BudgetsPage() {
                         </select>
                     </div>
 
-                    {/* Grams & Hours */}
+                    {/* Impresora */}
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-neutral-500 uppercase">
+                            Impresora <span className="text-neutral-600">(costo real de máquina)</span>
+                        </label>
+                        <select
+                            value={form.printerId}
+                            onChange={e => setForm({ ...form, printerId: e.target.value })}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white appearance-none tap-target"
+                        >
+                            <option value="">Sin impresora (tarifa manual)</option>
+                            {printers.map(p => (
+                                <option key={p.id} value={p.id}>
+                                    {p.name}{p.purchasePrice > 0 ? ` — ${p.powerWatts}W` : ''}
+                                </option>
+                            ))}
+                        </select>
+                        {selectedPrinter && selectedPrinter.purchasePrice > 0 && (
+                            <p className="text-[9px] text-neutral-500">
+                                Máquina: {formatMoney(
+                                    machineRatePerHour(
+                                        { purchasePrice: selectedPrinter.purchasePrice, expectedLifetimeHours: selectedPrinter.lifetimeHours || 12000, powerWatts: selectedPrinter.powerWatts || 250 },
+                                        settings?.kwhPrice ?? 120.5
+                                    ),
+                                    form.currency
+                                )}/h (depreciación + energía)
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Grams, Hours, Labor, Consumables */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-neutral-500 uppercase">
@@ -847,13 +948,37 @@ function BudgetsPage() {
                                 className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white tap-target"
                             />
                         </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-neutral-500 uppercase">
+                                Horas laborales <span className="text-neutral-600">(setup + post)</span>
+                            </label>
+                            <input
+                                type="number" min="0" step="0.5"
+                                value={form.laborHours}
+                                onChange={e => setForm({ ...form, laborHours: parseFloat(e.target.value) || 0 })}
+                                placeholder="0 = usa horas de impresión"
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white tap-target"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-neutral-500 uppercase">
+                                Consumibles <span className="text-neutral-600">($)</span>
+                            </label>
+                            <input
+                                type="number" min="0" step="1"
+                                value={form.consumables}
+                                onChange={e => setForm({ ...form, consumables: parseFloat(e.target.value) || 0 })}
+                                placeholder="0"
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-orange text-white tap-target"
+                            />
+                        </div>
                     </div>
 
                     {/* Energy & Labor costs per hour */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-neutral-500 uppercase">
-                                Energía <span className="text-neutral-600">($/hora)</span>
+                                Energía <span className="text-neutral-600">($/hora, manual)</span>
                             </label>
                             <input
                                 type="number" min="0" step="0.1"
@@ -897,45 +1022,7 @@ function BudgetsPage() {
                     {/* Real-time Results */}
                     <div className="p-5 bg-white/5 border border-white/10 rounded-2xl space-y-3">
                         <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">📊 Resultado</p>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <p className="text-[8px] text-neutral-600 font-black uppercase">Material</p>
-                                <p className="text-sm font-black text-white">{fmt(calculations.materialCost, form.currency)}</p>
-                            </div>
-                            <div>
-                                <p className="text-[8px] text-neutral-600 font-black uppercase">Energía</p>
-                                <p className="text-sm font-black text-white">{fmt(calculations.energyCost, form.currency)}</p>
-                            </div>
-                            <div>
-                                <p className="text-[8px] text-neutral-600 font-black uppercase">Mano de Obra</p>
-                                <p className="text-sm font-black text-white">{fmt(calculations.laborCost, form.currency)}</p>
-                            </div>
-                            <div>
-                                <p className="text-[8px] text-neutral-600 font-black uppercase">Costo Total</p>
-                                <p className="text-sm font-black text-neutral-400">{fmt(calculations.totalCost, form.currency)}</p>
-                            </div>
-                        </div>
-                        <div className="h-px bg-white/5"></div>
-                        <div className="grid grid-cols-3 gap-3 text-center">
-                            <div>
-                                <p className="text-[8px] text-brand-orange font-black uppercase">Precio Venta</p>
-                                <p className="text-lg font-black text-brand-orange">{fmt(calculations.salePrice, form.currency)}</p>
-                            </div>
-                            <div>
-                                <p className="text-[8px] text-green-500 font-black uppercase">Ganancia</p>
-                                <p className="text-lg font-black text-green-500">{fmt(calculations.profitAmount, form.currency)}</p>
-                            </div>
-                            <div>
-                                <p className="text-[8px] text-brand-cyan font-black uppercase">Margen</p>
-                                <p className={cn(
-                                    "text-lg font-black",
-                                    calculations.marginPercent >= 30 ? 'text-green-500' :
-                                    calculations.marginPercent >= 10 ? 'text-brand-cyan' : 'text-yellow-500'
-                                )}>
-                                    {fmtPct(calculations.marginPercent)}
-                                </p>
-                            </div>
-                        </div>
+                        <CostBreakdown breakdown={calculations} currency={form.currency} />
 
                         {/* AI Price Suggestion */}
                         {calculations.totalCost > 0 && (
@@ -1079,7 +1166,7 @@ Sugerí un precio de venta justo y competitivo para el mercado argentino, explic
                                 <label className="text-[10px] font-black text-neutral-500 uppercase">Moneda</label>
                                 <select
                                     value={editForm.currency}
-                                    onChange={e => setEditForm({ ...editForm, currency: e.target.value })}
+                                    onChange={e => setEditForm({ ...editForm, currency: e.target.value as Currency })}
                                     className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand-orange text-white appearance-none tap-target"
                                 >
                                     <option value="ARS">ARS ($)</option>
@@ -1117,7 +1204,26 @@ Sugerí un precio de venta justo y competitivo para el mercado argentino, explic
                             </select>
                         </div>
 
-                        {/* Grams & Hours */}
+                        {/* Impresora */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-neutral-500 uppercase">
+                                Impresora <span className="text-neutral-600">(costo real de máquina)</span>
+                            </label>
+                            <select
+                                value={editForm.printerId}
+                                onChange={e => setEditForm({ ...editForm, printerId: e.target.value })}
+                                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none text-white appearance-none tap-target"
+                            >
+                                <option value="">Sin impresora (tarifa manual)</option>
+                                {printers.map(p => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.name}{p.purchasePrice > 0 ? ` — ${p.powerWatts}W` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Grams, Hours, Labor, Consumables */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-neutral-500 uppercase">Gramos</label>
@@ -1128,10 +1234,28 @@ Sugerí un precio de venta justo y competitivo para el mercado argentino, explic
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-neutral-500 uppercase">Horas</label>
+                                <label className="text-[10px] font-black text-neutral-500 uppercase">Horas impresión</label>
                                 <input type="number" min="0" step="0.5"
                                     value={editForm.printHours}
                                     onChange={e => setEditForm({ ...editForm, printHours: parseFloat(e.target.value) || 0 })}
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none text-white tap-target"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-neutral-500 uppercase">Horas laborales</label>
+                                <input type="number" min="0" step="0.5"
+                                    value={editForm.laborHours}
+                                    onChange={e => setEditForm({ ...editForm, laborHours: parseFloat(e.target.value) || 0 })}
+                                    placeholder="0 = usa horas impresión"
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none text-white tap-target"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-neutral-500 uppercase">Consumibles ($)</label>
+                                <input type="number" min="0" step="1"
+                                    value={editForm.consumables}
+                                    onChange={e => setEditForm({ ...editForm, consumables: parseFloat(e.target.value) || 0 })}
+                                    placeholder="0"
                                     className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm outline-none text-white tap-target"
                                 />
                             </div>
@@ -1173,25 +1297,7 @@ Sugerí un precio de venta justo y competitivo para el mercado argentino, explic
                         {/* Results */}
                         <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
                             <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">📊 Resultado</p>
-                            <div className="grid grid-cols-3 gap-3 text-center">
-                                <div>
-                                    <p className="text-[8px] text-neutral-600 font-black uppercase">Costo</p>
-                                    <p className="text-base font-black text-neutral-400">{fmt(editCalculations.totalCost, editForm.currency)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[8px] text-brand-orange font-black uppercase">Venta</p>
-                                    <p className="text-base font-black text-brand-orange">{fmt(editCalculations.salePrice, editForm.currency)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[8px] text-green-500 font-black uppercase">Margen</p>
-                                    <p className={cn(
-                                        "text-base font-black",
-                                        editCalculations.marginPercent >= 30 ? 'text-green-500' : 'text-brand-cyan'
-                                    )}>
-                                        {fmtPct(editCalculations.marginPercent)}
-                                    </p>
-                                </div>
-                            </div>
+                            <CostBreakdown breakdown={editCalculations} currency={editForm.currency} />
                         </div>
 
                         {/* Notes */}

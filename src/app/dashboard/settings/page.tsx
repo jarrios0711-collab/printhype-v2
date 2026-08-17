@@ -193,6 +193,9 @@ function TallerSettings() {
     const [newPrinterName, setNewPrinterName] = useState('')
     const [newPrinterIp, setNewPrinterIp] = useState('')
     const [newPrinterPort, setNewPrinterPort] = useState(7125)
+    const [newPrinterPrice, setNewPrinterPrice] = useState(0)
+    const [newPrinterLifetime, setNewPrinterLifetime] = useState(12000)
+    const [newPrinterWatts, setNewPrinterWatts] = useState(250)
     const [isLoading, setIsLoading] = useState(true)
     const [editingIp, setEditingIp] = useState<string | null>(null)
     const [editIpValue, setEditIpValue] = useState('')
@@ -227,6 +230,9 @@ function TallerSettings() {
                 name: newPrinterName,
                 ip_address: newPrinterIp,
                 port: newPrinterPort,
+                purchasePrice: newPrinterPrice,
+                lifetimeHours: newPrinterLifetime,
+                powerWatts: newPrinterWatts,
             })
         })
         const data = await res.json()
@@ -235,6 +241,9 @@ function TallerSettings() {
             setNewPrinterName('')
             setNewPrinterIp('')
             setNewPrinterPort(7125)
+            setNewPrinterPrice(0)
+            setNewPrinterLifetime(12000)
+            setNewPrinterWatts(250)
         }
     }
 
@@ -348,6 +357,33 @@ function TallerSettings() {
                             />
                             <span className="text-[9px] text-neutral-600 self-center">Moonraker port</span>
                         </div>
+                        <div className="flex gap-2 text-xs items-center">
+                            <input
+                                type="number"
+                                min="0"
+                                value={newPrinterPrice}
+                                onChange={e => setNewPrinterPrice(parseFloat(e.target.value) || 0)}
+                                placeholder="Precio compra ($)"
+                                className="flex-1 bg-black/40 border border-neutral-800 p-2 rounded-lg text-white focus:border-brand-orange outline-none"
+                            />
+                            <input
+                                type="number"
+                                min="0"
+                                value={newPrinterLifetime}
+                                onChange={e => setNewPrinterLifetime(parseFloat(e.target.value) || 12000)}
+                                placeholder="Vida útil (h)"
+                                className="w-24 bg-black/40 border border-neutral-800 p-2 rounded-lg text-white focus:border-brand-orange outline-none"
+                            />
+                            <input
+                                type="number"
+                                min="0"
+                                value={newPrinterWatts}
+                                onChange={e => setNewPrinterWatts(parseFloat(e.target.value) || 250)}
+                                placeholder="Watts"
+                                className="w-20 bg-black/40 border border-neutral-800 p-2 rounded-lg text-white focus:border-brand-orange outline-none"
+                            />
+                        </div>
+                        <p className="text-[9px] text-neutral-600">Perfil de costos (opcional): precio + vida útil + watts → depreciación y energía reales en la calculadora</p>
                     </div>
                 </div>
                 {isLoading ? <span className="text-neutral-500 text-xs">Cargando...</span> : (
@@ -365,6 +401,12 @@ function TallerSettings() {
                                                 <span className="text-[10px] text-neutral-500 font-mono block">{printer.ip_address}:{printer.port || 7125}</span>
                                             ) : (
                                                 <span className="text-[10px] text-neutral-600 font-mono block">Sin IP configurada</span>
+                                            )}
+                                            {(printer.purchasePrice > 0 || printer.powerWatts) && (
+                                                <span className="text-[9px] text-brand-cyan/70 block">
+                                                    {printer.powerWatts || 250}W · vida {printer.lifetimeHours || 12000}h
+                                                    {printer.purchasePrice > 0 ? ` · $${Number(printer.purchasePrice).toLocaleString()}` : ''}
+                                                </span>
                                             )}
                                         </div>
                                     </div>
@@ -578,6 +620,31 @@ function FinanzasSettings({ settings, setSettings }: { settings: any, setSetting
                     <div className="w-full bg-black/10 border border-neutral-900 p-3 rounded-xl text-[10px] font-medium text-neutral-500 flex items-center gap-2">
                         <Clock size={12} /> {settings.updatedAt ? new Date(settings.updatedAt).toLocaleDateString() : 'Sin datos aún'}
                     </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-neutral-900">
+                <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Tasa de Fallo (%)</label>
+                    <input
+                        type="number"
+                        min="0" max="100"
+                        value={settings.failRatePercent ?? 10}
+                        onChange={(e) => setSettings({ ...settings, failRatePercent: parseFloat(e.target.value) || 0 })}
+                        className="w-full bg-black/40 border border-neutral-800 p-3 rounded-xl text-sm font-bold text-white outline-none focus:border-brand-orange"
+                    />
+                    <p className="text-[9px] text-neutral-600">% de trabajos que fallan y no se cotizan (default 10%)</p>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Gastos Fijos por Trabajo</label>
+                    <input
+                        type="number"
+                        min="0"
+                        value={settings.overheadPerJob ?? 0}
+                        onChange={(e) => setSettings({ ...settings, overheadPerJob: parseFloat(e.target.value) || 0 })}
+                        className="w-full bg-black/40 border border-neutral-800 p-3 rounded-xl text-sm font-bold text-white outline-none focus:border-brand-orange"
+                    />
+                    <p className="text-[9px] text-neutral-600">Alquiler, suscripciones, etc. ÷ trabajos al mes</p>
                 </div>
             </div>
         </div>

@@ -20,6 +20,11 @@ const BudgetSchema = z.object({
   marginPercent: z.number().optional().default(0),
   notes: z.string().optional().default(''),
   currency: z.string().optional().default('ARS'),
+  // Desglose completo de la calculadora
+  consumablesCost: z.number().min(0).optional().default(0),
+  overheadCost: z.number().min(0).optional().default(0),
+  failBuffer: z.number().min(0).optional().default(0),
+  depreciationCost: z.number().min(0).optional().default(0),
 })
 
 export async function GET() {
@@ -57,6 +62,10 @@ export async function GET() {
       marginPercent: Number(b.margin_percent),
       notes: b.notes || '',
       currency: b.currency || 'ARS',
+      consumablesCost: Number(b.consumables_cost ?? 0),
+      overheadCost: Number(b.overhead_cost ?? 0),
+      failBuffer: Number(b.fail_buffer ?? 0),
+      depreciationCost: Number(b.depreciation_cost ?? 0),
       createdAt: b.created_at,
     })))
   } catch (error) {
@@ -77,51 +86,52 @@ export async function POST(req: Request) {
     const parsed = BudgetSchema.parse(body)
 
     const admin = getServiceClient()
+    const fullPayload = {
+      user_id: user.id,
+      client_name: parsed.clientName,
+      job_name: parsed.jobName,
+      status: parsed.status,
+      material_id: parsed.materialId,
+      filament_grams: parsed.filamentGrams,
+      print_hours: parsed.printHours,
+      energy_cost: parsed.energyCost,
+      labor_cost: parsed.laborCost,
+      material_cost: parsed.materialCost,
+      total_cost: parsed.totalCost,
+      sale_price: parsed.salePrice,
+      profit_percent: parsed.profitPercent,
+      profit_amount: parsed.profitAmount,
+      margin_percent: parsed.marginPercent,
+      notes: parsed.notes,
+      currency: parsed.currency,
+      consumables_cost: parsed.consumablesCost,
+      overhead_cost: parsed.overheadCost,
+      fail_buffer: parsed.failBuffer,
+      depreciation_cost: parsed.depreciationCost,
+    }
+
     let result = await admin
       .from('budgets')
-      .insert([{
-        user_id: user.id,
-        client_name: parsed.clientName,
-        job_name: parsed.jobName,
-        status: parsed.status,
-        material_id: parsed.materialId,
-        filament_grams: parsed.filamentGrams,
-        print_hours: parsed.printHours,
-        energy_cost: parsed.energyCost,
-        labor_cost: parsed.laborCost,
-        material_cost: parsed.materialCost,
-        total_cost: parsed.totalCost,
-        sale_price: parsed.salePrice,
-        profit_percent: parsed.profitPercent,
-        profit_amount: parsed.profitAmount,
-        margin_percent: parsed.marginPercent,
-        notes: parsed.notes,
-        currency: parsed.currency,
-      }])
+      .insert([fullPayload])
       .select()
       .single()
 
-    if (result.error && result.error.code === '42703') { // Fallback if currency column doesn't exist
+    // Fallback 1: sin las columnas nuevas de desglose (migración no aplicada aún)
+    if (result.error && result.error.code === '42703') {
+      const { consumables_cost, overhead_cost, fail_buffer, depreciation_cost, ...basePayload } = fullPayload
       result = await admin
         .from('budgets')
-        .insert([{
-          user_id: user.id,
-          client_name: parsed.clientName,
-          job_name: parsed.jobName,
-          status: parsed.status,
-          material_id: parsed.materialId,
-          filament_grams: parsed.filamentGrams,
-          print_hours: parsed.printHours,
-          energy_cost: parsed.energyCost,
-          labor_cost: parsed.laborCost,
-          material_cost: parsed.materialCost,
-          total_cost: parsed.totalCost,
-          sale_price: parsed.salePrice,
-          profit_percent: parsed.profitPercent,
-          profit_amount: parsed.profitAmount,
-          margin_percent: parsed.marginPercent,
-          notes: parsed.notes,
-        }])
+        .insert([basePayload])
+        .select()
+        .single()
+    }
+
+    // Fallback 2: sin currency tampoco (tabla muy vieja)
+    if (result.error && result.error.code === '42703') {
+      const { currency, ...legacyPayload } = fullPayload
+      result = await admin
+        .from('budgets')
+        .insert([legacyPayload])
         .select()
         .single()
     }
@@ -147,6 +157,10 @@ export async function POST(req: Request) {
       marginPercent: Number(data.margin_percent),
       notes: data.notes || '',
       currency: data.currency || 'ARS',
+      consumablesCost: Number(data.consumables_cost ?? 0),
+      overheadCost: Number(data.overhead_cost ?? 0),
+      failBuffer: Number(data.fail_buffer ?? 0),
+      depreciationCost: Number(data.depreciation_cost ?? 0),
       createdAt: data.created_at,
     })
   } catch (error: any) {

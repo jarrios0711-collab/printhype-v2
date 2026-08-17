@@ -8,6 +8,8 @@ const SettingsSchema = z.object({
   kwhPrice: z.number().min(0).optional().default(120.50),
   profitMargin: z.number().min(0).max(10).optional().default(1.5),
   laborHourPrice: z.number().min(0).optional().default(800),
+  failRatePercent: z.number().min(0).max(100).optional().default(10),
+  overheadPerJob: z.number().min(0).optional().default(0),
   ollamaUrl: z.string().optional().default('http://localhost:11434'),
   webhookUrl: z.string().optional().default(''),
 })
@@ -36,11 +38,13 @@ export async function GET() {
         precio_kwh: 120.50,
         margen_ganancia: 1.5,
         precio_hora_laboral: 800,
+        tasa_fallo: 10,
+        gastos_por_trabajo: 0,
         ollama_url: 'http://localhost:11434',
         webhook_url: '',
       }
 
-      const { data: newSettings } = await admin
+      await admin
         .from('ajustes')
         .insert([defaults])
         .select()
@@ -52,6 +56,8 @@ export async function GET() {
         kwhPrice: defaults.precio_kwh,
         profitMargin: defaults.margen_ganancia,
         laborHourPrice: defaults.precio_hora_laboral,
+        failRatePercent: defaults.tasa_fallo,
+        overheadPerJob: defaults.gastos_por_trabajo,
         ollamaUrl: defaults.ollama_url,
         webhookUrl: defaults.webhook_url,
         updatedAt: null,
@@ -64,6 +70,8 @@ export async function GET() {
       kwhPrice: settings.precio_kwh,
       profitMargin: settings.margen_ganancia,
       laborHourPrice: settings.precio_hora_laboral,
+      failRatePercent: settings.tasa_fallo ?? 10,
+      overheadPerJob: settings.gastos_por_trabajo ?? 0,
       ollamaUrl: settings.ollama_url || 'http://localhost:11434',
       webhookUrl: settings.webhook_url || '',
       updatedAt: settings.updated_at || null,
@@ -86,7 +94,7 @@ export async function POST(req: Request) {
     const parsed = SettingsSchema.parse(body)
 
     const admin = getServiceClient()
-    const { data: settings, error } = await admin
+    let result = await admin
       .from('ajustes')
       .upsert({
         id: 'global',
@@ -94,13 +102,31 @@ export async function POST(req: Request) {
         precio_kwh: parsed.kwhPrice,
         margen_ganancia: parsed.profitMargin,
         precio_hora_laboral: parsed.laborHourPrice,
+        tasa_fallo: parsed.failRatePercent,
+        gastos_por_trabajo: parsed.overheadPerJob,
         ollama_url: parsed.ollamaUrl,
         webhook_url: parsed.webhookUrl,
       })
       .select()
 
-    if (error) throw error
-    return NextResponse.json({ success: true, data: settings })
+    // Fallback: si las columnas nuevas aún no existen en la tabla, guardar sin ellas
+    if (result.error && result.error.code === '42703') {
+      result = await admin
+        .from('ajustes')
+        .upsert({
+          id: 'global',
+          moneda: parsed.currency,
+          precio_kwh: parsed.kwhPrice,
+          margen_ganancia: parsed.profitMargin,
+          precio_hora_laboral: parsed.laborHourPrice,
+          ollama_url: parsed.ollamaUrl,
+          webhook_url: parsed.webhookUrl,
+        })
+        .select()
+    }
+
+    if (result.error) throw result.error
+    return NextResponse.json({ success: true, data: result.data })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
