@@ -36,6 +36,8 @@ export async function proxy(request: NextRequest) {
     pathname === '/favicon.ico' ||
     pathname.startsWith('/sw.js') ||
     pathname.startsWith('/offline') ||
+    pathname.startsWith('/track') ||
+    pathname.startsWith('/api/track') ||
     /\.(svg|png|jpg|jpeg|gif|webp)$/.test(pathname)
 
   if (isPublic) return supabaseResponse

@@ -4,6 +4,7 @@ import { getServiceClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 import { triggerWebhook } from '@/lib/webhook'
 import { enforcePlanLimit, PlanLimitError } from '@/lib/billing'
+import { generateTrackingToken } from '@/lib/tracking'
 
 const OrderSchema = z.object({
   customerName: z.string().min(2, 'Nombre debe tener al menos 2 caracteres'),
@@ -42,6 +43,7 @@ export async function GET() {
       createdAt: p.created_at,
       deliveryDate: p.delivery_date || null,
       stockDeducted: p.stock_deducted || false,
+      trackingToken: p.tracking_token || null,
       items: [{
         projectName: p.item_reference,
         quantity: 1,
@@ -86,6 +88,7 @@ export async function POST(req: Request) {
         inventory_id: parsed.materialId || null,
         units_consumed: parsed.weightGrams,
         delivery_date: parsed.deliveryDate || null,
+        tracking_token: generateTrackingToken(),
         user_id: user.id,
       }])
       .select()

@@ -33,13 +33,13 @@ export function getWaUrl(phone: string, name: string, project: string): string {
   return `https://wa.me/${c}?text=${encodeURIComponent(msg)}`
 }
 
-/** Construye URL de WhatsApp con factura */
+/** Construye URL de WhatsApp con link público de seguimiento */
 export function getWaInvoiceUrl(
   phone: string,
   customerName: string,
   totalPrice: number,
   status: string,
-  orderId: string,
+  trackingToken: string,
   currency: string
 ): string {
   if (!phone) return '#'
@@ -48,8 +48,8 @@ export function getWaInvoiceUrl(
   if (!c.startsWith('549') && !c.startsWith('54') && c.length === 10) c = '549' + c
   if (c.startsWith('54') && !c.startsWith('549')) c = '549' + c.substring(2)
   const symbol = currency === 'USD' ? 'US$' : '$'
-  const invoiceUrl = '/dashboard/orders/' + orderId
-  const msg = `🧾 *FACTURA PrintHype - JR3D*\n\nCliente: ${customerName}\nTotal: ${symbol}${totalPrice.toLocaleString()}\nEstado: ${status}\n\nPodés ver tu factura acá:\n${invoiceUrl}`
+  const trackingUrl = trackingToken ? `${process.env.NEXT_PUBLIC_APP_URL || ''}/track/${trackingToken}` : '/track'
+  const msg = `🧾 *TU PEDIDO PrintHype*\n\nCliente: ${customerName}\nTotal: ${symbol}${totalPrice.toLocaleString()}\nEstado: ${status}\n\nSeguí tu pedido acá:\n${trackingUrl}`
   return `https://wa.me/${c}?text=${encodeURIComponent(msg)}`
 }
 

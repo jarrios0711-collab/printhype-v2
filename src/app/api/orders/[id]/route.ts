@@ -42,6 +42,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       materialId: p.inventory_id,
       weightGrams: p.units_consumed,
       stockDeducted: p.stock_deducted,
+      trackingToken: p.tracking_token || null,
       items: [{ id: 'item-1', projectName: p.item_reference, quantity: 1, price: p.total_price }],
     })
   } catch (error) {
