@@ -1,6 +1,7 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getServiceClient } from '@/lib/supabase/admin'
+import { getActivePlan } from '@/lib/billing'
 
 export const dynamic = 'force-dynamic'
 
@@ -155,6 +156,17 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     const admin = getServiceClient()
+
+    // Gate de plan: el AI Lab es feature de Basic/PRO
+    if (user) {
+      const plan = await getActivePlan(user.id)
+      if (plan === 'FREE') {
+        return NextResponse.json(
+          { error: 'El AI Lab está disponible en los planes Basic y Pro. Mejorá tu plan para usarlo.' },
+          { status: 402 }
+        )
+      }
+    }
 
     let config: any = null
     if (user) {

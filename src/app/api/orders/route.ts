@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getServiceClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 import { triggerWebhook } from '@/lib/webhook'
+import { enforcePlanLimit, PlanLimitError } from '@/lib/billing'
 
 const OrderSchema = z.object({
   customerName: z.string().min(2, 'Nombre debe tener al menos 2 caracteres'),
@@ -68,6 +69,9 @@ export async function POST(req: Request) {
     const body = await req.json()
     const parsed = OrderSchema.parse(body)
     const userWebhook = req.headers.get('x-webhook-url') || undefined
+
+    // Límite del plan (402 si se supera)
+    await enforcePlanLimit(user.id, 'orders')
 
     const admin = getServiceClient()
     const { data, error } = await admin
@@ -152,6 +156,9 @@ export async function POST(req: Request) {
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Datos inválidos', details: error.issues }, { status: 400 })
+    }
+    if (error instanceof PlanLimitError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
     }
     console.error('POST /api/orders error:', error)
     return NextResponse.json({ error: 'Error al crear pedido' }, { status: 500 })

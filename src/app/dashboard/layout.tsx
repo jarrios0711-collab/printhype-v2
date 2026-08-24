@@ -12,6 +12,7 @@ import {
     Cpu,
     Video,
     Briefcase,
+    CreditCard,
     Settings,
     LogOut,
     Menu,
@@ -35,6 +36,7 @@ const navItems = [
     { name: 'AI Lab', href: '/dashboard/ai-lab', icon: Cpu, tooltip: 'Laboratorio de inteligencia artificial' },
     { name: 'Viral Cockpit', href: '/dashboard/viral', icon: Video, tooltip: 'Marketing y contenido viral' },
     { name: 'Proyectos', href: '/dashboard/projects', icon: Briefcase, tooltip: 'Tablero Kanban de proyectos' },
+    { name: 'Plan', href: '/dashboard/billing', icon: CreditCard, tooltip: 'Suscripción y planes' },
     { name: 'Ajustes', href: '/dashboard/settings', icon: Settings, tooltip: 'Configuración del taller' },
 ]
 
@@ -47,6 +49,7 @@ function Sidebar() {
     const pathname = usePathname()
     const [userEmail, setUserEmail] = useState('admin@jr3d.com')
     const [userInitial, setUserInitial] = useState('A')
+    const [plan, setPlan] = useState<'FREE' | 'BASIC' | 'PRO'>('FREE')
     const [mobileOpen, setMobileOpen] = useState(false)
 
     useEffect(() => {
@@ -57,6 +60,15 @@ function Sidebar() {
                 setUserInitial(user.email[0].toUpperCase())
             }
         })
+    }, [])
+
+    useEffect(() => {
+        fetch('/api/billing/plan')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+                if (d?.plan) setPlan(d.plan as 'FREE' | 'BASIC' | 'PRO')
+            })
+            .catch(() => {})
     }, [])
 
     useEffect(() => {
@@ -136,8 +148,15 @@ function Sidebar() {
                         </div>
                         <div className="flex-1 overflow-hidden min-w-0">
                             <p className="text-xs font-bold truncate">{userEmail}</p>
-                            <span className="inline-block px-2 py-0.5 bg-brand-orange/10 text-brand-orange text-[9px] font-black rounded-full border border-brand-orange/20 uppercase tracking-widest">
-                                JR3D PRO
+                            <span className={cn(
+                                'inline-block px-2 py-0.5 text-[9px] font-black rounded-full border uppercase tracking-widest',
+                                plan === 'PRO'
+                                    ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/20'
+                                    : plan === 'BASIC'
+                                        ? 'bg-brand-cyan/10 text-brand-cyan border-brand-cyan/20'
+                                        : 'bg-neutral-900 text-neutral-500 border-neutral-800'
+                            )}>
+                                {plan === 'FREE' ? 'GRATIS' : plan}
                             </span>
                         </div>
                     </div>

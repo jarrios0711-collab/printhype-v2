@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { triggerWebhook } from '@/lib/webhook'
+import { enforcePlanLimit, PlanLimitError } from '@/lib/billing'
 
 const MaterialSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
@@ -58,6 +59,9 @@ export async function POST(req: Request) {
     const parsed = MaterialSchema.parse(body)
     const userWebhook = req.headers.get('x-webhook-url') || undefined
 
+    // Límite del plan (402 si se supera)
+    await enforcePlanLimit(user.id, 'inventory')
+
     const { data, error } = await supabase
       .from('inventory_items')
       .insert([{
@@ -86,6 +90,9 @@ export async function POST(req: Request) {
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Datos inválidos', details: error.issues }, { status: 400 })
+    }
+    if (error instanceof PlanLimitError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
     }
     console.error('POST /api/inventory error:', error)
     return NextResponse.json({ error: 'Error al agregar material' }, { status: 500 })
