@@ -652,7 +652,7 @@ function FinanzasSettings({ settings, setSettings }: { settings: any, setSetting
 }
 
 function ConectividadSettings({ settings, setSettings }: { settings: any, setSettings: any }) {
-    const [aiConfig, setAiConfig] = useState<any>({ provider: 'ollama', apiKey: '', model: 'gemma3:4b', baseUrl: 'http://localhost:11434' })
+    const [aiConfig, setAiConfig] = useState<any>({ provider: 'ollama', apiKey: '', hasKey: false, model: 'gemma3:4b', baseUrl: 'http://localhost:11434' })
     const [aiSaving, setAiSaving] = useState(false)
     const [aiSaved, setAiSaved] = useState(false)
     const [validationStatus, setValidationStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle')
@@ -661,7 +661,7 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
 
     useEffect(() => {
         fetch('/api/user/ai-config').then(r => r.json()).then(data => {
-            if (!data.error) setAiConfig(data)
+            if (!data.error) setAiConfig({ ...data, apiKey: '', hasKey: Boolean(data.hasKey) })
         }).catch(() => {})
     }, [])
 
@@ -675,7 +675,8 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     provider: aiConfig.provider,
-                    api_key: aiConfig.apiKey,
+                    // Si no se escribió una key nueva, se conserva la guardada (sentinel)
+                    api_key: aiConfig.apiKey || '__KEEP__',
                     model: aiConfig.model,
                     base_url: aiConfig.baseUrl,
                 })
@@ -683,6 +684,12 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
             const data = await res.json()
             if (!data.error) {
                 setAiSaved(true)
+                // Refrescar estado local: la key guardada no se expone, solo el flag
+                setAiConfig((prev: any) => ({
+                    ...prev,
+                    hasKey: data.data?.hasKey ?? prev.hasKey,
+                    apiKey: '',
+                }))
                 setTimeout(() => setAiSaved(false), 3000)
             }
         } catch (err) {
@@ -703,7 +710,7 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
             const res = await fetch('/api/user/ai-config/validate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ provider, apiKey: key, model: aiConfig.model })
+                body: JSON.stringify({ provider, apiKey: key, model: aiConfig.model, baseUrl: aiConfig.baseUrl })
             })
             const data = await res.json()
             if (data.success) {
@@ -718,7 +725,7 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
         }
     }
 
-    const hasApiKey = aiConfig.provider === 'ollama' || (aiConfig.apiKey && aiConfig.apiKey.length > 5)
+    const hasApiKey = aiConfig.provider === 'ollama' || aiConfig.hasKey || (aiConfig.apiKey && aiConfig.apiKey.length > 5)
 
     if (!settings) return null;
 
@@ -857,7 +864,11 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                                     setAiConfig({ ...aiConfig, apiKey: val })
                                     validateApiKey(val, aiConfig.provider)
                                 }}
-                                placeholder="sk-... o tu API key"
+                                placeholder={
+                                    aiConfig.hasKey && !aiConfig.apiKey
+                                        ? (aiConfig.apiKeyMasked || '•••••••• (guardada)')
+                                        : 'sk-... o tu API key'
+                                }
                                 autoComplete="new-password"
                                 className={cn(
                                     "w-full bg-neutral-900 border rounded-xl px-4 py-3 text-sm text-white outline-none font-mono transition-colors",
@@ -890,6 +901,12 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                             <p className="text-[10px] text-red-400 mt-1 flex items-start gap-1">
                                 <AlertCircle size={12} className="shrink-0 mt-0.5" />
                                 {validationMsg}
+                            </p>
+                        )}
+                        {aiConfig.hasKey && !aiConfig.apiKey && (
+                            <p className="text-[10px] text-green-500/80 mt-1 flex items-center gap-1">
+                                <CheckCircle2 size={12} className="shrink-0" />
+                                Tenés una API key guardada (termina en "{aiConfig.apiKeyMasked?.slice(-4) || '••••'}"). Escribí una nueva solo si querés reemplazarla.
                             </p>
                         )}
                         <p className="text-[9px] text-neutral-600">Tu API key se guarda de forma segura e independiente en el servidor para tu cuenta de usuario.</p>

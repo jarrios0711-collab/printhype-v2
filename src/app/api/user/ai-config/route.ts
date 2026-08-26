@@ -10,12 +10,22 @@ const AI_CONFIG_DEFAULTS = {
   base_url: 'http://localhost:11434',
 }
 
+/** Valor centinela: si el frontend lo envía como api_key, se conserva la clave guardada */
+export const KEEP_CURRENT_KEY = '__KEEP__'
+
 const AiConfigSchema = z.object({
   provider: z.enum(['openai', 'groq', 'gemini', 'deepseek', 'ollama', 'openrouter']),
   api_key: z.string().optional().default(''),
   model: z.string().optional().default('gemma3:4b'),
   base_url: z.string().optional().default('http://localhost:11434'),
 })
+
+/** Enmascara una API key para mostrarla en el frontend (nunca se expone completa) */
+export function maskApiKey(key: string): string {
+  if (!key) return ''
+  if (key.length <= 8) return '••••••••'
+  return `${key.slice(0, 4)}…${key.slice(-4)}`
+}
 
 export async function GET() {
   try {
@@ -35,17 +45,19 @@ export async function GET() {
     if (!config) {
       return NextResponse.json({
         provider: AI_CONFIG_DEFAULTS.provider,
-        apiKey: AI_CONFIG_DEFAULTS.api_key,
         model: AI_CONFIG_DEFAULTS.model,
         baseUrl: AI_CONFIG_DEFAULTS.base_url,
+        hasKey: false,
+        apiKeyMasked: '',
       })
     }
 
     return NextResponse.json({
       provider: config.provider,
-      apiKey: config.api_key || '',
       model: config.model,
       baseUrl: config.base_url,
+      hasKey: Boolean(config.api_key),
+      apiKeyMasked: maskApiKey(config.api_key || ''),
     })
   } catch (error) {
     console.error('GET /api/user/ai-config error:', error)
@@ -66,21 +78,32 @@ export async function POST(req: Request) {
 
     const admin = getServiceClient()
 
+    // Si el cliente envió el sentinela (o vacío), conservamos la API key guardada
+    let apiKey = parsed.api_key
+    if (!apiKey || apiKey === KEEP_CURRENT_KEY) {
+      const { data: existing } = await admin
+        .from('user_ai_config')
+        .select('api_key')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      apiKey = existing?.api_key || ''
+    }
+
     // Primero intentar actualizar si ya existe
-    const { data: existing } = await admin
+    const { data: existingRow } = await admin
       .from('user_ai_config')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle()
 
     let result
-    if (existing) {
+    if (existingRow) {
       // Update existing
       result = await admin
         .from('user_ai_config')
         .update({
           provider: parsed.provider,
-          api_key: parsed.api_key,
+          api_key: apiKey,
           model: parsed.model,
           base_url: parsed.base_url,
           updated_at: new Date().toISOString(),
@@ -95,7 +118,7 @@ export async function POST(req: Request) {
         .insert({
           user_id: user.id,
           provider: parsed.provider,
-          api_key: parsed.api_key,
+          api_key: apiKey,
           model: parsed.model,
           base_url: parsed.base_url,
         })
@@ -109,7 +132,8 @@ export async function POST(req: Request) {
       success: true,
       data: {
         provider: result.data.provider,
-        apiKey: result.data.api_key || '',
+        hasKey: Boolean(result.data.api_key),
+        apiKeyMasked: maskApiKey(result.data.api_key || ''),
         model: result.data.model,
         baseUrl: result.data.base_url,
       }

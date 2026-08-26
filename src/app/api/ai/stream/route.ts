@@ -152,34 +152,39 @@ export async function POST(req: NextRequest) {
   try {
     const { prompt, context, fileData } = await req.json()
 
-    // Get user's AI config
+    // Auth obligatoria: el AI Lab es una feature del dashboard
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
     const admin = getServiceClient()
 
     // Gate de plan: el AI Lab es feature de Basic/PRO
-    if (user) {
-      const plan = await getActivePlan(user.id)
-      if (plan === 'FREE') {
-        return NextResponse.json(
-          { error: 'El AI Lab está disponible en los planes Basic y Pro. Mejorá tu plan para usarlo.' },
-          { status: 402 }
-        )
-      }
+    const plan = await getActivePlan(user.id)
+    if (plan === 'FREE') {
+      return NextResponse.json(
+        { error: 'El AI Lab está disponible en los planes Basic y Pro. Mejorá tu plan para usarlo.' },
+        { status: 402 }
+      )
     }
 
-    let config: any = null
-    if (user) {
-      const { data } = await admin
-        .from('user_ai_config')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-      config = data
-    }
+    const { data } = await admin
+      .from('user_ai_config')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+    const config = data
 
     const provider = (config?.provider || 'ollama') as keyof typeof PROVIDER_META
     const meta = PROVIDER_META[provider]
+    if (!meta) {
+      console.error('[ai/stream] provider desconocido:', provider)
+      return NextResponse.json(
+        { error: 'Proveedor de IA desconocido. Configurá tu proveedor en Ajustes → IA & Conectividad.' },
+        { status: 400 }
+      )
+    }
     const apiKey = config?.api_key || ''
     const model = config?.model || meta.defaultModel
     const baseUrl = config?.base_url || meta.defaultUrl

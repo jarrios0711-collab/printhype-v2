@@ -75,7 +75,7 @@ export default function AILabPage() {
         fetch('/api/user/ai-config').then(r => r.json()).then(data => {
             if (!data.error) {
                 setAiProvider(data.provider)
-                setAiConfigured(data.provider !== 'ollama' ? !!data.apiKey : true)
+                setAiConfigured(data.provider !== 'ollama' ? Boolean(data.hasKey) : true)
             } else {
                 setAiConfigured(false)
             }
