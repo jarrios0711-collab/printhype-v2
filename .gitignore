@@ -1,15 +1,22 @@
-node_modules
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
 
-# Environment
+# Environment — NUNCA commitear claves reales
 .env
 .env.local
 .env.production
+.env.development
 .env.*.local
 .env.vercel
+!.env.example
 
 # Next.js
 .next/
 out/
+next-env.d.ts
+tsconfig.tsbuildinfo
 
 # Vercel
 .vercel
@@ -18,6 +25,21 @@ out/
 prisma/
 prisma.config.ts
 test_schema.prisma
+
+# Supabase CLI temp (nunca trackear)
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+
+# Testing / CI artifacts
+test-results/
+playwright-report/
+.lighthouseci/
+blob-report/
+html-report/
+
+# Notas internas de sesión (pueden contener credenciales)
+_session/
 
 # IDE
 .vscode/
@@ -32,5 +54,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
-
-.env*.local
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
