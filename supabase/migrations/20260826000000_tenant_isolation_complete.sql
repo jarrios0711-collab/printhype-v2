@@ -91,36 +91,40 @@ create policy "users_own_campaigns" on viral_campaigns
   with check (auth.uid() = user_id);
 
 -- ── 9. ai_chat_history (NO tenía RLS → gap crítico) ──────────────────────────
-alter table ai_chat_history enable row level security;
-drop policy if exists "Users read own chat history" on ai_chat_history;
-drop policy if exists "Users insert own chat history" on ai_chat_history;
-drop policy if exists "Users update own chat history" on ai_chat_history;
-drop policy if exists "Users delete own chat history" on ai_chat_history;
-create policy "Users read own chat history" on ai_chat_history
-  for select to authenticated using (auth.uid() = user_id);
-create policy "Users insert own chat history" on ai_chat_history
-  for insert to authenticated with check (auth.uid() = user_id);
-create policy "Users update own chat history" on ai_chat_history
-  for update to authenticated using (auth.uid() = user_id);
-create policy "Users delete own chat history" on ai_chat_history
-  for delete to authenticated using (auth.uid() = user_id);
-create index if not exists idx_ai_chat_history_user_id on ai_chat_history(user_id);
+-- (tabla opcional: solo se toca si existe — viene de la migración manual 002)
+do $$
+begin
+  if to_regclass('public.ai_chat_history') is not null then
+    execute 'alter table public.ai_chat_history enable row level security';
+    execute 'drop policy if exists "Users read own chat history" on public.ai_chat_history';
+    execute 'drop policy if exists "Users insert own chat history" on public.ai_chat_history';
+    execute 'drop policy if exists "Users update own chat history" on public.ai_chat_history';
+    execute 'drop policy if exists "Users delete own chat history" on public.ai_chat_history';
+    execute 'create policy "Users read own chat history" on public.ai_chat_history for select to authenticated using (auth.uid() = user_id)';
+    execute 'create policy "Users insert own chat history" on public.ai_chat_history for insert to authenticated with check (auth.uid() = user_id)';
+    execute 'create policy "Users update own chat history" on public.ai_chat_history for update to authenticated using (auth.uid() = user_id)';
+    execute 'create policy "Users delete own chat history" on public.ai_chat_history for delete to authenticated using (auth.uid() = user_id)';
+    execute 'create index if not exists idx_ai_chat_history_user_id on public.ai_chat_history(user_id)';
+  end if;
+end $$;
 
 -- ── 10. user_notification_preferences (NO tenía RLS → gap crítico) ───────────
-alter table user_notification_preferences enable row level security;
-drop policy if exists "Users read own notification preferences" on user_notification_preferences;
-drop policy if exists "Users insert own notification preferences" on user_notification_preferences;
-drop policy if exists "Users update own notification preferences" on user_notification_preferences;
-drop policy if exists "Users delete own notification preferences" on user_notification_preferences;
-create policy "Users read own notification preferences" on user_notification_preferences
-  for select to authenticated using (auth.uid() = user_id);
-create policy "Users insert own notification preferences" on user_notification_preferences
-  for insert to authenticated with check (auth.uid() = user_id);
-create policy "Users update own notification preferences" on user_notification_preferences
-  for update to authenticated using (auth.uid() = user_id);
-create policy "Users delete own notification preferences" on user_notification_preferences
-  for delete to authenticated using (auth.uid() = user_id);
-create index if not exists idx_user_notification_preferences_user_id on user_notification_preferences(user_id);
+-- (tabla opcional: solo se toca si existe — viene de la migración manual 002)
+do $$
+begin
+  if to_regclass('public.user_notification_preferences') is not null then
+    execute 'alter table public.user_notification_preferences enable row level security';
+    execute 'drop policy if exists "Users read own notification preferences" on public.user_notification_preferences';
+    execute 'drop policy if exists "Users insert own notification preferences" on public.user_notification_preferences';
+    execute 'drop policy if exists "Users update own notification preferences" on public.user_notification_preferences';
+    execute 'drop policy if exists "Users delete own notification preferences" on public.user_notification_preferences';
+    execute 'create policy "Users read own notification preferences" on public.user_notification_preferences for select to authenticated using (auth.uid() = user_id)';
+    execute 'create policy "Users insert own notification preferences" on public.user_notification_preferences for insert to authenticated with check (auth.uid() = user_id)';
+    execute 'create policy "Users update own notification preferences" on public.user_notification_preferences for update to authenticated using (auth.uid() = user_id)';
+    execute 'create policy "Users delete own notification preferences" on public.user_notification_preferences for delete to authenticated using (auth.uid() = user_id)';
+    execute 'create index if not exists idx_user_notification_preferences_user_id on public.user_notification_preferences(user_id)';
+  end if;
+end $$;
 
 -- ── Nota: order_activity_log ya fue corregida (20260824000000) ───────────────
 -- ── budgets / user_settings / user_subscriptions / billing_events ya son scoped ──
