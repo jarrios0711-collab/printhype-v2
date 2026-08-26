@@ -1,0 +1,9 @@
+# Archivos sensibles — NUNCA subir a Vercel (usar las env vars del dashboard)
+.env
+.env.*
+!.env.example
+
+# Dependencias / build
+node_modules
+.next
+.git
