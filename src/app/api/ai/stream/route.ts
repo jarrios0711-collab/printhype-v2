@@ -42,12 +42,36 @@ async function streamOpenAI(baseUrl: string, apiKey: string, model: string, mess
   const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      // OpenRouter recomienda identificar la app (opcional pero ayuda)
+      'HTTP-Referer': 'https://printhype-v2.vercel.app',
+      'X-Title': 'PrintHype',
+    },
     body: JSON.stringify({ model, messages, stream: true }),
   })
   if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    throw new Error(`API error: ${res.status} — ${body.slice(0, 200)}`)
+    const raw = await res.text().catch(() => '')
+    let detail = raw.slice(0, 300)
+    try {
+      const parsed = JSON.parse(raw)
+      detail = parsed?.error?.message || parsed?.message || parsed?.error || detail
+    } catch {}
+
+    if (typeof detail !== 'string') {
+      try { detail = JSON.stringify(detail).slice(0, 300) } catch { detail = '' }
+    }
+
+    const hints: Record<number, string> = {
+      401: 'API Key inválida o revocada. Revisala en Ajustes → IA & Conectividad.',
+      402: 'Tu cuenta del proveedor no tiene créditos/saldo suficiente.',
+      403: 'Tu API Key no tiene permisos para este modelo.',
+      404: `El modelo "${model}" no existe o no está disponible en este proveedor. Probá con otro ID de modelo.`,
+      429: 'Demasiadas solicitudes o límite de uso alcanzado. Esperá un momento y reintentá.',
+    }
+    const hint = hints[res.status] || 'Revisá el modelo y la configuración del proveedor.'
+    throw new Error(`OpenRouter/API ${res.status}: ${hint} ${typeof detail === 'string' ? `(${detail})` : ''}`.trim())
   }
 
   return new ReadableStream({
@@ -160,15 +184,6 @@ export async function POST(req: NextRequest) {
     }
     const admin = getServiceClient()
 
-    // Gate de plan: el AI Lab es feature de Basic/PRO
-    const plan = await getActivePlan(user.id)
-    if (plan === 'FREE') {
-      return NextResponse.json(
-        { error: 'El AI Lab está disponible en los planes Basic y Pro. Mejorá tu plan para usarlo.' },
-        { status: 402 }
-      )
-    }
-
     const { data } = await admin
       .from('user_ai_config')
       .select('*')
@@ -188,6 +203,18 @@ export async function POST(req: NextRequest) {
     const apiKey = config?.api_key || ''
     const model = config?.model || meta.defaultModel
     const baseUrl = config?.base_url || meta.defaultUrl
+
+    // Gate de plan: el AI Lab es feature de Basic/PRO, PERO si el usuario
+    // trae su propia API key (BYOK) o usa Ollama local, no consume la cuota
+    // del plan y no tiene sentido bloquearlo.
+    const plan = await getActivePlan(user.id)
+    const usesOwnEngine = provider === 'ollama' || Boolean(apiKey)
+    if (plan === 'FREE' && !usesOwnEngine) {
+      return NextResponse.json(
+        { error: 'El AI Lab está disponible en los planes Basic y Pro, o configurando tu propia API Key en Ajustes → IA & Conectividad.' },
+        { status: 402 }
+      )
+    }
 
     // --- Consultar bases de datos del usuario para inyectar en prompt ---
     let dbContext = ''
