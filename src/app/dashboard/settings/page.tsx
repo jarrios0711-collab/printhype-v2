@@ -82,13 +82,14 @@ const AI_PROVIDERS = [
   { 
     value: 'openrouter', 
     label: 'OpenRouter', 
-    defaultModel: 'google/gemini-2.0-flash-001', 
+    defaultModel: 'openrouter/free', 
     defaultUrl: 'https://openrouter.ai/api/v1',
     models: [
-      { value: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash (Recomendado)' },
-      { value: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B (Veloz y económico)' },
-      { value: 'deepseek/deepseek-chat', label: 'DeepSeek Chat v3 (Excelente y económico)' },
-      { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet (Inteligencia SOTA)' },
+      { value: 'openrouter/free', label: 'Auto: mejor modelo gratis' },
+      { value: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B (Gratis)' },
+      { value: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'Nemotron 3 Super 120B (Gratis)' },
+      { value: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash (Pago)' },
+      { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet (Pago)' },
       { value: 'custom', label: 'Escribir modelo personalizado...' }
     ]
   },
@@ -658,12 +659,37 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
     const [validationStatus, setValidationStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle')
     const [validationMsg, setValidationMsg] = useState('')
     const [showHelpModal, setShowHelpModal] = useState(false)
+    const [freeModels, setFreeModels] = useState<{ id: string; name: string; contextLength?: number }[]>([])
+    const [freeModelsStatus, setFreeModelsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+    const [freeModelsError, setFreeModelsError] = useState('')
 
     useEffect(() => {
         fetch('/api/user/ai-config').then(r => r.json()).then(data => {
             if (!data.error) setAiConfig({ ...data, apiKey: '', hasKey: Boolean(data.hasKey) })
         }).catch(() => {})
     }, [])
+
+    // Cargar los modelos gratuitos de OpenRouter solo cuando hace falta
+    useEffect(() => {
+        if (aiConfig.provider !== 'openrouter' || freeModelsStatus !== 'idle') return
+        let cancelled = false
+        setFreeModelsStatus('loading')
+        setFreeModelsError('')
+        fetch('/api/ai/openrouter-models')
+            .then(r => r.json())
+            .then(data => {
+                if (cancelled) return
+                if (data.error) throw new Error(data.error)
+                setFreeModels(data.models || [])
+                setFreeModelsStatus('done')
+            })
+            .catch((err: any) => {
+                if (cancelled) return
+                setFreeModelsError(err?.message || 'Error de conexión')
+                setFreeModelsStatus('error')
+            })
+        return () => { cancelled = true }
+    }, [aiConfig.provider, freeModelsStatus])
 
     const providerMeta = AI_PROVIDERS.find(p => p.value === aiConfig.provider) || AI_PROVIDERS[3]
 
@@ -823,6 +849,9 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                                 .map(m => (
                                     <option key={m.value} value={m.value}>{m.label}</option>
                                 ))}
+                            {aiConfig.provider === 'openrouter' && freeModels.map(m => (
+                                <option key={`free-${m.id}`} value={m.id}>{m.name}</option>
+                            ))}
                         </datalist>
                         <div className="flex flex-wrap gap-1.5">
                             {(providerMeta.models || [])
@@ -843,6 +872,56 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                                     </button>
                                 ))}
                         </div>
+
+                        {aiConfig.provider === 'openrouter' && (
+                            <div className="space-y-1.5 pt-1">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[10px] font-bold text-neutral-500 uppercase">
+                                        Modelos gratis de OpenRouter
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFreeModelsStatus('idle')}
+                                        className="text-[10px] font-bold text-brand-orange hover:underline uppercase tracking-wider"
+                                    >
+                                        {freeModelsStatus === 'loading' ? 'Cargando…' : 'Actualizar lista'}
+                                    </button>
+                                </div>
+                                <select
+                                    value={freeModels.some(m => m.id === aiConfig.model) ? aiConfig.model : ''}
+                                    onChange={e => {
+                                        if (e.target.value) setAiConfig({ ...aiConfig, model: e.target.value })
+                                    }}
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange cursor-pointer"
+                                >
+                                    <option value="">
+                                        {freeModelsStatus === 'loading'
+                                            ? 'Cargando modelos gratuitos…'
+                                            : `Elegí un modelo gratis (${freeModels.length} disponibles)`}
+                                    </option>
+                                    {freeModels.map(m => (
+                                        <option key={m.id} value={m.id}>
+                                            {m.name} — {m.id}
+                                        </option>
+                                    ))}
+                                </select>
+                                {freeModelsStatus === 'error' && (
+                                    <p className="text-[10px] text-red-400">
+                                        No se pudo cargar la lista ({freeModelsError}). Podés escribir el ID a mano.
+                                    </p>
+                                )}
+                                {freeModelsStatus === 'done' && freeModels.length === 0 && (
+                                    <p className="text-[10px] text-neutral-500">
+                                        OpenRouter no devolvió modelos gratuitos en este momento.
+                                    </p>
+                                )}
+                                {freeModelsStatus === 'done' && freeModels.length > 0 && (
+                                    <p className="text-[10px] text-neutral-600">
+                                        Los modelos “:free” tienen límites de uso diarios y pueden requerir créditos mínimos en tu cuenta de OpenRouter.
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 

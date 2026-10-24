@@ -11,7 +11,7 @@ const PROVIDER_META = {
   gemini: { name: 'Gemini', defaultModel: 'gemini-2.0-flash', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta' },
   deepseek: { name: 'DeepSeek', defaultModel: 'deepseek-chat', defaultUrl: 'https://api.deepseek.com/v1' },
   ollama: { name: 'Ollama', defaultModel: 'gemma3:4b', defaultUrl: 'http://localhost:11434' },
-  openrouter: { name: 'OpenRouter', defaultModel: 'google/gemini-2.0-flash-001', defaultUrl: 'https://openrouter.ai/api/v1' },
+  openrouter: { name: 'OpenRouter', defaultModel: 'openrouter/free', defaultUrl: 'https://openrouter.ai/api/v1' },
 }
 
 function buildSystemPrompt(context: string, fileData: any, dbContext: string): string {
