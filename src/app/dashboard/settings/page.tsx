@@ -668,6 +668,11 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
     const providerMeta = AI_PROVIDERS.find(p => p.value === aiConfig.provider) || AI_PROVIDERS[3]
 
     const handleSaveAi = async () => {
+        const rawModel = aiConfig.model?.trim()
+        const modelToSave = (!rawModel || rawModel === 'custom') ? providerMeta.defaultModel : rawModel
+        if (modelToSave !== aiConfig.model) {
+            setAiConfig({ ...aiConfig, model: modelToSave })
+        }
         setAiSaving(true)
         try {
             const res = await fetch('/api/user/ai-config', {
@@ -677,7 +682,7 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                     provider: aiConfig.provider,
                     // Si no se escribió una key nueva, se conserva la guardada (sentinel)
                     api_key: aiConfig.apiKey || '__KEEP__',
-                    model: aiConfig.model,
+                    model: modelToSave,
                     base_url: aiConfig.baseUrl,
                 })
             })
@@ -798,47 +803,46 @@ function ConectividadSettings({ settings, setSettings }: { settings: any, setSet
                         </select>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-neutral-500 uppercase">Modelo / Agente</label>
-                        {(() => {
-                            const availableModels = providerMeta.models || []
-                            const isPredefined = availableModels.some(m => m.value === aiConfig.model)
-                            const isCustomMode = aiConfig.model === 'custom' || (!isPredefined && aiConfig.model !== '')
-
-                            return (
-                                <div className="space-y-2">
-                                    <select
-                                        value={isCustomMode ? 'custom' : aiConfig.model}
-                                        onChange={e => {
-                                            const val = e.target.value
-                                            if (val === 'custom') {
-                                                setAiConfig({ ...aiConfig, model: '' })
-                                            } else {
-                                                setAiConfig({ ...aiConfig, model: val })
-                                            }
-                                        }}
-                                        className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange appearance-none cursor-pointer"
-                                    >
-                                        {availableModels.map(m => (
-                                            <option key={m.value} value={m.value}>{m.label}</option>
-                                        ))}
-                                        {!availableModels.some(m => m.value === 'custom') && (
-                                            <option value="custom">Escribir modelo personalizado...</option>
+                        <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-bold text-neutral-500 uppercase">Modelo / Agente</label>
+                            <span className="text-[10px] text-neutral-600">Escribí o elegí de la lista</span>
+                        </div>
+                        <input
+                            type="text"
+                            list={`ai-models-${aiConfig.provider}`}
+                            value={aiConfig.model || ''}
+                            onChange={e => setAiConfig({ ...aiConfig, model: e.target.value })}
+                            placeholder={providerMeta.defaultModel}
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange"
+                        />
+                        <datalist id={`ai-models-${aiConfig.provider}`}>
+                            {(providerMeta.models || [])
+                                .filter(m => m.value !== 'custom')
+                                .map(m => (
+                                    <option key={m.value} value={m.value}>{m.label}</option>
+                                ))}
+                        </datalist>
+                        <div className="flex flex-wrap gap-1.5">
+                            {(providerMeta.models || [])
+                                .filter(m => m.value !== 'custom')
+                                .map(m => (
+                                    <button
+                                        key={m.value}
+                                        type="button"
+                                        onClick={() => setAiConfig({ ...aiConfig, model: m.value })}
+                                        className={cn(
+                                            'px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors',
+                                            aiConfig.model === m.value
+                                                ? 'bg-brand-orange/15 border-brand-orange/60 text-brand-orange'
+                                                : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
                                         )}
-                                    </select>
-                                    
-                                    {isCustomMode && (
-                                        <input
-                                            type="text"
-                                            value={aiConfig.model === 'custom' ? '' : aiConfig.model}
-                                            onChange={e => setAiConfig({ ...aiConfig, model: e.target.value })}
-                                            placeholder="Ej: anthropic/claude-3-opus"
-                                            autoComplete="off"
-                                            className="w-full bg-neutral-900 border border-neutral-850 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-orange animate-in slide-in-from-top-1 duration-200"
-                                        />
-                                    )}
-                                </div>
-                            )
-                        })()}
+                                    >
+                                        {m.label}
+                                    </button>
+                                ))}
+                        </div>
                     </div>
                 </div>
 
